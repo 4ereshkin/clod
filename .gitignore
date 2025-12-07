@@ -1,0 +1,9 @@
+3dtiles.zip
+*.zip
+db.json
+3dtiles
+*.las
+*.laz
+*.ply
+*.pcd
+*.pdf
