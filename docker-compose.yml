@@ -3,20 +3,60 @@ services:
     build: .
     container_name: lidar_db
     restart: unless-stopped
-    
     environment:
-      - "POSTGRES_DB=pointcloud_db"
-      - "POSTGRES_PASSWORD=postgres"
-    
+      - POSTGRES_DB=pointcloud_db
+      - POSTGRES_PASSWORD=postgres
     ports:
       - "5433:5432"
-    
     volumes:
       - D:/Docker/postgresql_data:/var/lib/postgresql/data
-    
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d pointcloud_db"]
       interval: 1m30s
       timeout: 5s
       retries: 5
       start_period: 30s
+
+  temporal:
+    image: temporalio/auto-setup:1.29.0  # можно latest, но лучше фиксировать версию
+    container_name: temporal
+    restart: unless-stopped
+
+    depends_on:
+      postgresql:
+        condition: service_healthy
+
+    environment:
+      # тип БД / плагин Temporal
+      - DB=postgres12          # или 'postgresql', но с postgres12 норм и для advanced visibility 
+      - DB_PORT=5432           # ВНУТРЕННИЙ порт контейнера Postgres
+      # куда коннектиться
+      - POSTGRES_SEEDS=postgresql  # имя сервиса в compose (можно и lidar_db, но сервис надёжнее) 
+      - POSTGRES_USER=postgres
+      - POSTGRES_PWD=postgres
+      # имена баз, которые auto-setup создаст и мигрирует
+      - DBNAME=temporal
+      - VISIBILITY_DBNAME=temporal_visibility
+      # дефолтный namespace, чтобы SDK сразу работал
+      - DEFAULT_NAMESPACE=default
+      - DEFAULT_NAMESPACE_RETENTION=168h    # 7 дней, можешь поменять
+      # сказать auto-setup, что схему создавать НЕ пропускаем
+      - SKIP_SCHEMA_SETUP=false
+      # логирование, опционально
+      - LOG_LEVEL=info
+
+    ports:
+      - "7233:7233"
+
+  temporal-ui:
+    image: temporalio/ui:latest
+    container_name: temporal-ui
+    restart: unless-stopped
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      # опционально можно задать namespace по умолчанию
+      - TEMPORAL_DEFAULT_NAMESPACE=default
+    ports:
+      - "8233:8080"   # 8233 на хосте -> 8080 внутри UI-контейнера
