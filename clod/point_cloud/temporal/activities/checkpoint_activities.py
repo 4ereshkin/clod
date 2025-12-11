@@ -50,6 +50,7 @@ async def load_metadata_for_files(file_paths: List[str]) -> Dict[str, Any]:
         cp.cloud_metadata = {}
         cp.metadata_json_path = {}
         for path in file_paths:
+            activity.heartbeat({"file_path": path})
             cp.load_metadata(path)
         cp.metadata_to_json()
         return {

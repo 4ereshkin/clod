@@ -23,29 +23,9 @@ import argparse
 import json
 import time
 from temporalio.client import Client
+from temporalio.service import RPCError
 
 from clod.point_cloud.temporal.workflows.mls_pipeline_workflow import MlsPipelineWorkflow, MlsPipelineParams
-
-# region agent log
-DEBUG_LOG_PATH = r"d:\4. Иное по работе\lidar-project\.cursor\debug.log"
-
-
-def _agent_log(hypothesis_id: str, message: str, data: dict) -> None:
-    payload = {
-        "sessionId": "debug-session",
-        "runId": "pre-fix-1",
-        "hypothesisId": hypothesis_id,
-        "location": "start_pipeline.py",
-        "message": message,
-        "data": data,
-        "timestamp": int(time.time() * 1000),
-    }
-    try:
-        with open(DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-# endregion
 
 
 async def run_workflow(
@@ -57,17 +37,7 @@ async def run_workflow(
     generate_tiles: bool,
 ) -> None:
     """Helper to start the MLS pipeline workflow and await its result."""
-    _agent_log(
-        "H1",
-        "start_workflow called",
-        {
-            "file_paths": file_paths,
-            "in_srs": in_srs,
-            "out_srs": out_srs,
-            "db_config_path": db_config_path,
-            "generate_tiles": generate_tiles,
-        },
-    )
+
     client = await Client.connect("localhost:7233")
 
     params = MlsPipelineParams(
@@ -86,12 +56,13 @@ async def run_workflow(
     )
     try:
         result = await handle.result()
-        _agent_log("H1", "workflow result received", {"result": result})
         print("Workflow completed with result:")
         print(result)
-    except Exception as exc:  # pragma: no cover - debugging
-        _agent_log("H1", "workflow failed", {"error": repr(exc)})
-        raise
+
+    except RPCError as exc:
+        print(f"Не дождались результата из Temporal: {exc}")
+        print(f"Workflow всё равно продолжает выполняться. "
+              f"Посмотри его статус в Temporal UI по ID {handle.id}.")
 
 
 def main() -> None:

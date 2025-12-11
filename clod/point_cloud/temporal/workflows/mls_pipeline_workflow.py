@@ -51,18 +51,25 @@ class MlsPipelineWorkflow:
         meta_result = await workflow.execute_activity(
             "load_metadata_for_files",
             args=[file_paths],
+            heartbeat_timeout=timedelta(seconds=15),
             schedule_to_close_timeout=timedelta(seconds=600),
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
 
         # 2. Репроекция каждого файла (параллельно)
+        reproject_futures = [workflow.execute_activity("reproject_file",
+                args=[file_path, in_srs, out_srs],
+                heartbeat_timeout=timedelta(minutes=10),
+                schedule_to_close_timeout=timedelta(hours=3),
+                retry_policy=RetryPolicy(maximum_attempts=1)) for file_path in file_paths]
         reproject_futures = []
         for file_path in file_paths:
             fut = workflow.execute_activity(
                 "reproject_file",
                 args=[file_path, in_srs, out_srs],
-                schedule_to_close_timeout=timedelta(seconds=3600),
-                retry_policy=RetryPolicy(maximum_attempts=3),
+                heartbeat_timeout=timedelta(minutes=10),
+                schedule_to_close_timeout=timedelta(hours=3),
+                retry_policy=RetryPolicy(maximum_attempts=1),
             )
             reproject_futures.append(fut)
 
@@ -75,8 +82,8 @@ class MlsPipelineWorkflow:
             await workflow.execute_activity(
                 "insert_file_into_db",
                 args=[file_path, db_config_path],
-                schedule_to_close_timeout=timedelta(seconds=3600),
-                retry_policy=RetryPolicy(maximum_attempts=3),
+                schedule_to_close_timeout=timedelta(hours=3),
+                retry_policy=RetryPolicy(maximum_attempts=2),
             )
 
         # 4. Опционально делаем 3D Tiles
