@@ -17,8 +17,8 @@ class SRS:
     def reproject(self) -> Optional[str]:
 
         input_file = self.cloud_path
-        output_file = f"reprojected_clouds/{self._get_source_name()}_reproj.laz"
-        os.makedirs("reprojected_clouds", exist_ok=True)
+        output_file = f"result_cloud/reprojected_clouds/{self._get_source_name()}_reproj.laz"
+        os.makedirs("result_cloud/reprojected_clouds", exist_ok=True)
 
         pipeline_json = {
             "pipeline": [

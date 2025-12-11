@@ -92,12 +92,12 @@ class Checkpoint():
 
     def metadata_to_json(self) -> bool:
         try:
-            output_dir = Path("checkpoint_metadata")
+            output_dir = Path("activities_data/checkpoint_metadata")
             output_dir.mkdir(exist_ok=True)
             
             for file_path, metadata in self.cloud_metadata.items():
                 file_name = Path(file_path).stem
-                json_filename = f"checkpoint_metadata/metadata_{file_name}.json"
+                json_filename = f"activities_data/checkpoint_metadata/metadata_{file_name}.json"
                 self.metadata_json_path[file_name] = json_filename
                 
                 print(f'Сохраняем метаданные в: {json_filename}')

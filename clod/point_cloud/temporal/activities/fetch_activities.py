@@ -12,15 +12,15 @@ import asyncio
 from typing import Optional
 from temporalio import activity
 
-from point_cloud.fetch import Fetch
+from clod.fetch import Fetch
 
 
 @activity.defn
 async def fetch_file_from_db(
     load_id: str,
     file_name: str,
-    config_path: Optional[str] = "db.json",
-    save_path: str = "fetched_clouds",
+    config_path: Optional[str] = "clod/db.json",
+    save_path: str = "clod/result_cloud/fetched_clouds",
 ) -> bool:
     """
     Download a cloud from the database using its load ID.

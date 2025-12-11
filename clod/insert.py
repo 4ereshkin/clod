@@ -181,7 +181,7 @@ class Insert(DbAgent):
     
     def _save_metadata_file(self, source_name: str, meta_dict: dict) -> bool:
         try:
-            storage_dir = Path('storage_metadata')
+            storage_dir = Path('activities_data/storage_metadata')
             storage_dir.mkdir(exist_ok=True)
 
             source_dir = storage_dir / source_name

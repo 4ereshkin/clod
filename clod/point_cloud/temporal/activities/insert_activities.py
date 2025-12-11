@@ -14,13 +14,13 @@ import asyncio
 from typing import Optional
 from temporalio import activity
 
-from point_cloud.insert import Insert
+from clod.insert import Insert
 
 
 @activity.defn
 async def insert_file_into_db(
     file_path: str,
-    config_path: Optional[str] = "db.json",
+    config_path: Optional[str] = "clod/db.json",
 ) -> bool:
     """
     Import a single LAS/LAZ file into the database.

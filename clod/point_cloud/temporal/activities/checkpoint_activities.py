@@ -15,7 +15,7 @@ import asyncio
 from typing import Dict, List, Any
 from temporalio import activity
 
-from point_cloud.checkpoint import Checkpoint
+from clod.checkpoint import Checkpoint
 
 
 @activity.defn

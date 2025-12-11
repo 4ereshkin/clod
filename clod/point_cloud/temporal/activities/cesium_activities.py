@@ -12,7 +12,7 @@ import asyncio
 from typing import Optional
 from temporalio import activity
 
-from point_cloud.cesium import CesiumImport
+from clod.cesium import CesiumImport
 
 
 @activity.defn

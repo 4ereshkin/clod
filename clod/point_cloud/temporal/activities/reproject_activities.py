@@ -13,7 +13,7 @@ import asyncio
 from typing import Optional
 from temporalio import activity
 
-from point_cloud.reproject import SRS
+from clod.reproject import SRS
 
 
 @activity.defn

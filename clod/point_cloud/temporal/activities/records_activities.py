@@ -14,7 +14,7 @@ from typing import List, Dict, Any, Optional
 from temporalio import activity
 import pandas as pd
 
-from point_cloud.records import Records
+from clod.records import Records
 
 
 @activity.defn

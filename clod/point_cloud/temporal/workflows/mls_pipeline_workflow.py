@@ -20,7 +20,7 @@ from typing import List, Dict, Any
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-from point_cloud.temporal.activities import (
+from clod.point_cloud.temporal.activities import (
     load_metadata_for_files,
     reproject_file,
     insert_file_into_db,
