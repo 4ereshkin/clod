@@ -16,114 +16,84 @@ the reprojected files and whether tile generation succeeded for each.
 
 from __future__ import annotations
 
+import json
+import time
+import asyncio
+from datetime import timedelta
+from dataclasses import dataclass
 from typing import List, Dict, Any
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-from clod.point_cloud.temporal.activities import (
-    load_metadata_for_files,
-    reproject_file,
-    insert_file_into_db,
-    convert_to_tileset,
-)
+
+@dataclass
+class MlsPipelineParams:
+    file_paths: List[str]
+    in_srs: str = "EPSG:4490"
+    out_srs: str = "EPSG:4326"
+    db_config_path: str = "db.json"
+    generate_tiles: bool = False
 
 
 @workflow.defn
 class MlsPipelineWorkflow:
-    """A Temporal workflow that runs a simple point cloud processing pipeline."""
-
     @workflow.run
-    async def run(
-        self,
-        file_paths: List[str],
-        *,
-        in_srs: str = "EPSG:4490",
-        out_srs: str = "EPSG:4326",
-        db_config_path: str = "db.json",
-        generate_tiles: bool = False,
-    ) -> Dict[str, Any]:
-        """
-        Execute the pipeline on the provided files.
+    async def run(self, params: MlsPipelineParams) -> Dict[str, Any]:
 
-        Parameters
-        ----------
-        file_paths:
-            A list of LAS/LAZ file paths to process.  These paths must be
-            accessible to the worker executing the activities.
-        in_srs:
-            EPSG or PROJ string describing the source coordinate system.
-        out_srs:
-            EPSG or PROJ string describing the target coordinate system.
-        db_config_path:
-            Path to the JSON configuration file for database access.
-        generate_tiles:
-            If ``True``, the workflow will produce Cesium 3D tiles for each
-            processed file.
+        # Разворачиваем параметры во внутренние переменные
+        file_paths = params.file_paths
+        in_srs = params.in_srs
+        out_srs = params.out_srs
+        db_config_path = params.db_config_path
+        generate_tiles = params.generate_tiles
 
-        Returns
-        -------
-        dict
-            A dictionary summarising the results of the pipeline:
-            ``metadata`` contains the extracted metadata, ``reprojected_files``
-            lists the new file paths and ``tiles_generated`` indicates
-            whether tile generation succeeded for each file (if enabled).
-        """
-        # Step 1: extract and store metadata for the incoming files.  This
-        # activity writes JSON files to disk and returns their locations.
+        # 1. Метаданные по всем файлам
         meta_result = await workflow.execute_activity(
-            load_metadata_for_files,
-            file_paths,
-            schedule_to_close_timeout=600,
+            "load_metadata_for_files",
+            args=[file_paths],
+            schedule_to_close_timeout=timedelta(seconds=600),
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
 
-        # Step 2: reproject each file concurrently.  The results list may
-        # contain ``None`` for files that failed to reproject; filter those
-        # out for subsequent steps.
+        # 2. Репроекция каждого файла (параллельно)
         reproject_futures = []
         for file_path in file_paths:
             fut = workflow.execute_activity(
-                reproject_file,
-                file_path,
-                in_srs,
-                out_srs,
-                schedule_to_close_timeout=3600,
+                "reproject_file",
+                args=[file_path, in_srs, out_srs],
+                schedule_to_close_timeout=timedelta(seconds=3600),
                 retry_policy=RetryPolicy(maximum_attempts=3),
             )
             reproject_futures.append(fut)
-        reproject_results = await workflow.await_all(reproject_futures)
+
+        reproject_results = await asyncio.gather(*reproject_futures)
+        # отбрасываем неудачные репроекции (если вернули None/False)
         reprojected_files = [res for res in reproject_results if res]
 
-        # Step 3: insert each reprojected file into the database.  Run
-        # sequentially to avoid overwhelming the database connection pool.
+        # 3. Вставка в БД (по одному, чтобы не валить коннект)
         for file_path in reprojected_files:
             await workflow.execute_activity(
-                insert_file_into_db,
-                file_path,
-                db_config_path,
-                schedule_to_close_timeout=3600,
+                "insert_file_into_db",
+                args=[file_path, db_config_path],
+                schedule_to_close_timeout=timedelta(seconds=3600),
                 retry_policy=RetryPolicy(maximum_attempts=3),
             )
 
-        # Step 4: optionally generate 3D tiles for each file.  Use
-        # concurrency here as the tile conversion is CPU bound.  If tile
-        # generation is disabled, this will simply return an empty list.
-        tiles_results: List[bool] = []
+        # 4. Опционально делаем 3D Tiles
+        tiles_results: List[bool] = []  # инициализируем всегда, чтобы не было UnboundLocalError
         if generate_tiles:
             tile_futures = []
             for file_path in reprojected_files:
                 fut = workflow.execute_activity(
-                    convert_to_tileset,
-                    file_path,
-                    "cesium_tiles",
-                    schedule_to_close_timeout=3600,
+                    "convert_to_tileset",
+                    args=[file_path, "cesium_tiles"],
+                    schedule_to_close_timeout=timedelta(seconds=3600),
                     retry_policy=RetryPolicy(maximum_attempts=3),
                 )
                 tile_futures.append(fut)
-            tiles_results = await workflow.await_all(tile_futures)
+            tiles_results = await asyncio.gather(*tile_futures)
 
-        # Summarise the results for the caller.  Workflows should return
-        # simple data structures that can be JSON encoded.
+        # 5. Возвращаем аккуратный JSON-совместимый результат
         return {
             "metadata": meta_result,
             "reprojected_files": reprojected_files,

@@ -23,8 +23,8 @@ import asyncio
 from temporalio.client import Client
 from temporalio.worker import Worker
 
-from point_cloud.temporal.workflows import MlsPipelineWorkflow
-from point_cloud.temporal.activities import (
+from clod.point_cloud.temporal.workflows.mls_pipeline_workflow import MlsPipelineWorkflow
+from clod.point_cloud.temporal.activities import (
     load_metadata_for_files,
     reproject_file,
     insert_file_into_db,

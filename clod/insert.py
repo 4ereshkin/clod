@@ -3,7 +3,7 @@ import pdal
 import uuid
 
 from psycopg2 import sql
-from storage import DbAgent
+from clod.storage import DbAgent
 from urllib.parse import quote_plus
 
 from pathlib import Path
@@ -12,7 +12,7 @@ from typing import Optional
 
 
 class Insert(DbAgent):
-    def __init__(self, config_path: Optional[str] = 'db.json'):
+    def __init__(self, config_path: Optional[str] = 'clod/db.json'):
         super().__init__(config_path=config_path)
 
         self.cloud_path: str = ''

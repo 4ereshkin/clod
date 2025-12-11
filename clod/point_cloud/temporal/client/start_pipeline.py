@@ -20,9 +20,32 @@ from __future__ import annotations
 
 import asyncio
 import argparse
+import json
+import time
 from temporalio.client import Client
 
-from point_cloud.temporal.workflows import MlsPipelineWorkflow
+from clod.point_cloud.temporal.workflows.mls_pipeline_workflow import MlsPipelineWorkflow, MlsPipelineParams
+
+# region agent log
+DEBUG_LOG_PATH = r"d:\4. Иное по работе\lidar-project\.cursor\debug.log"
+
+
+def _agent_log(hypothesis_id: str, message: str, data: dict) -> None:
+    payload = {
+        "sessionId": "debug-session",
+        "runId": "pre-fix-1",
+        "hypothesisId": hypothesis_id,
+        "location": "start_pipeline.py",
+        "message": message,
+        "data": data,
+        "timestamp": int(time.time() * 1000),
+    }
+    try:
+        with open(DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+# endregion
 
 
 async def run_workflow(
@@ -34,20 +57,41 @@ async def run_workflow(
     generate_tiles: bool,
 ) -> None:
     """Helper to start the MLS pipeline workflow and await its result."""
+    _agent_log(
+        "H1",
+        "start_workflow called",
+        {
+            "file_paths": file_paths,
+            "in_srs": in_srs,
+            "out_srs": out_srs,
+            "db_config_path": db_config_path,
+            "generate_tiles": generate_tiles,
+        },
+    )
     client = await Client.connect("localhost:7233")
-    handle = await client.start_workflow(
-        MlsPipelineWorkflow.run,
-        file_paths,
+
+    params = MlsPipelineParams(
+        file_paths=file_paths,
         in_srs=in_srs,
         out_srs=out_srs,
         db_config_path=db_config_path,
-        generate_tiles=generate_tiles,
+        generate_tiles=generate_tiles
+    )
+
+    handle = await client.start_workflow(
+        "MlsPipelineWorkflow",
+        params,
         id=f"mls-pipeline-{hash(tuple(file_paths)) & 0xFFFF:x}",
         task_queue="point-cloud-task-queue",
     )
-    result = await handle.result()
-    print("Workflow completed with result:")
-    print(result)
+    try:
+        result = await handle.result()
+        _agent_log("H1", "workflow result received", {"result": result})
+        print("Workflow completed with result:")
+        print(result)
+    except Exception as exc:  # pragma: no cover - debugging
+        _agent_log("H1", "workflow failed", {"error": repr(exc)})
+        raise
 
 
 def main() -> None:
@@ -55,7 +99,7 @@ def main() -> None:
     parser.add_argument("--files", nargs="+", required=True, help="Paths to LAS/LAZ files to process")
     parser.add_argument("--in-srs", default="EPSG:4490", help="Input spatial reference system (default: EPSG:4490)")
     parser.add_argument("--out-srs", default="EPSG:4326", help="Output spatial reference system (default: EPSG:4326)")
-    parser.add_argument("--db-config-path", default="db.json", help="Path to database configuration JSON (default: db.json)")
+    parser.add_argument("--db-config-path", default="clod/db.json", help="Path to database configuration JSON (default: db.json)")
     parser.add_argument("--generate-tiles", action="store_true", help="Generate Cesium 3D tiles for each processed file")
     args = parser.parse_args()
 
