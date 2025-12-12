@@ -42,6 +42,14 @@ async def insert_file_into_db(
     def _insert() -> bool:
         storage = Insert(config_path=config_path)
         storage.cloud_path = file_path
-        return storage.run()
+        activity.heartbeat({"file_path": file_path, "status": "Insert started"})
+        status = storage.run()
+
+        if not status:
+            activity.heartbeat({"file_path": file_path, "status": "Insert failed"})
+
+        activity.heartbeat({"file_path": file_path, "status": "Insert completed"})
+
+        return status
 
     return await loop.run_in_executor(None, _insert)

@@ -14,48 +14,63 @@ from __future__ import annotations
 import asyncio
 from typing import Dict, List, Any
 from temporalio import activity
+from temporalio.exceptions import ApplicationError
 
-from clod.checkpoint import Checkpoint
+from clod.checkpoint import Checkpoint, SelectFiles
 
 
 @activity.defn
-async def load_metadata_for_files(file_paths: List[str]) -> Dict[str, Any]:
+async def las_choice() -> List[str]:
     """
-    Extract metadata for a list of LAS/LAZ files and write it to disk.
-
-    Parameters
-    ----------
-    file_paths:
-        A list of absolute or relative paths to LAS/LAZ files whose
-        PDAL metadata should be extracted.
-
-    Returns
-    -------
-    dict
-        A dictionary containing two keys:
-
-        ``metadata_json_path``:
-            A mapping from file stem to the path of the JSON metadata
-            file written on disk.
-
-        ``metadata``:
-            A mapping from the original file path to the parsed
-            metadata dictionary.
+    Выбор файлов для пайплайна
+    :return:
     """
-    loop = asyncio.get_running_loop()
+    def _get_files() -> List[str]:
+        file_paths = SelectFiles(template='templates/las.json').select_file()
+        if file_paths is None:
+            raise ApplicationError(
+                f'Нужен как минимум 1 файл для работы пайплайна',
+                        non_retryable=True)
+        return file_paths
+
+    try:
+        return await asyncio.to_thread(_get_files)
+    except ApplicationError:
+        raise
+    except Exception as e:
+        raise ApplicationError(f'Не удалось выбрать LAS/LAZ файл: {e}',
+                               non_retryable=True) from e
+
+
+@activity.defn
+async def load_metadata_for_file(file_path: str) -> Dict[str, Any]:
 
     def _extract() -> Dict[str, Any]:
-        cp = Checkpoint()
-        cp.file_path = file_paths
-        cp.cloud_metadata = {}
-        cp.metadata_json_path = {}
-        for path in file_paths:
-            activity.heartbeat({"file_path": path})
-            cp.load_metadata(path)
-        cp.metadata_to_json()
+        cp = Checkpoint(file_path)
+
+        if not cp.json_path or not cp.metadata:
+            raise ApplicationError(
+                f'Не удалось извлечь/сохранить метаданные для файла: {file_path}',
+                non_retryable=True
+            )
         return {
-            "metadata_json_path": cp.metadata_json_path,
-            "metadata": cp.cloud_metadata,
+            'file_path': file_path,
+            'metadata_json_path': cp.json_path,
+            'metadata': cp.metadata,
         }
 
-    return await loop.run_in_executor(None, _extract)
+    try:
+        activity.heartbeat({'file_path': file_path, 'stage': 'start'})
+
+        result = await asyncio.to_thread(_extract)
+
+        activity.heartbeat({'file_path': file_path, 'stage': 'done'})
+        return result
+
+    except ApplicationError:
+        raise
+    except Exception as e:
+        raise ApplicationError(
+            f'Неожиданная ошибка при обработке {file_path}: {e}',
+            non_retryable=False,
+        ) from e

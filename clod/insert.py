@@ -225,6 +225,7 @@ class Insert(DbAgent):
         source_name = self._get_source_name()
 
         if not self._merge_staging_to_clouds(source_name=source_name):
+            print("Ошибка вставки стейджа в основную таблицу")
             self._drop_staging()
             return False
         

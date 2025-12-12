@@ -36,24 +36,29 @@ async def run_workflow(
     db_config_path: str,
     generate_tiles: bool,
 ) -> None:
-    """Helper to start the MLS pipeline workflow and await its result."""
+    """Start the MLS pipeline workflow, send files via signal, and await its result."""
 
     client = await Client.connect("localhost:7233")
 
     params = MlsPipelineParams(
-        file_paths=file_paths,
         in_srs=in_srs,
         out_srs=out_srs,
         db_config_path=db_config_path,
         generate_tiles=generate_tiles
     )
 
+    workflow_id = f"mls-pipeline-{hash(tuple(file_paths)) & 0xFFFF:x}"
+
     handle = await client.start_workflow(
-        "MlsPipelineWorkflow",
+        'MlsPipelineWorkflow.run',
         params,
-        id=f"mls-pipeline-{hash(tuple(file_paths)) & 0xFFFF:x}",
+        id=workflow_id,
         task_queue="point-cloud-task-queue",
     )
+
+    files_to_send: list[str] = file_paths or []
+    await handle.signal('las_selected', files_to_send)
+
     try:
         result = await handle.result()
         print("Workflow completed with result:")
@@ -66,12 +71,24 @@ async def run_workflow(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Start the MLS point cloud pipeline workflow.")
-    parser.add_argument("--files", nargs="+", required=True, help="Paths to LAS/LAZ files to process")
-    parser.add_argument("--in-srs", default="EPSG:4490", help="Input spatial reference system (default: EPSG:4490)")
-    parser.add_argument("--out-srs", default="EPSG:4326", help="Output spatial reference system (default: EPSG:4326)")
-    parser.add_argument("--db-config-path", default="clod/db.json", help="Path to database configuration JSON (default: db.json)")
-    parser.add_argument("--generate-tiles", action="store_true", help="Generate Cesium 3D tiles for each processed file")
+    parser = argparse.ArgumentParser(
+                    description="Start the MLS point cloud pipeline workflow.")
+    parser.add_argument(
+        "--in-srs",
+                    default="EPSG:4490",
+                    help="Input spatial reference system (default: EPSG:4490)")
+    parser.add_argument(
+        "--out-srs",
+                    default="EPSG:4326",
+                    help="Output spatial reference system (default: EPSG:4326)")
+    parser.add_argument(
+        "--db-config-path",
+                    default="clod/db.json",
+                    help="Path to database configuration JSON (default: db.json)")
+    parser.add_argument(
+                    "--generate-tiles",
+                    action="store_true",
+                    help="Generate Cesium 3D tiles for each processed file")
     args = parser.parse_args()
 
     asyncio.run(

@@ -1,0 +1,10 @@
+{
+  "title": "Выберите .LAS или .LAZ файл",
+  "file_types": {
+    "filter_name": "LAS/LAZ файлы",
+    "types": [
+      "*.las",
+      "*.laz"
+    ]
+  }
+}
