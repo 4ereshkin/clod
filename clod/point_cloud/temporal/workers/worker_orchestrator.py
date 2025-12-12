@@ -20,11 +20,13 @@ of activities onto distinct queues.
 """
 
 import asyncio
+
 from temporalio.client import Client
 from temporalio.worker import Worker
 
 from clod.point_cloud.temporal.workflows.mls_pipeline_workflow import MlsPipelineWorkflow
 from clod.point_cloud.temporal.activities import (
+    las_choice,
     load_metadata_for_file,
     reproject_file,
     insert_file_into_db,
@@ -46,6 +48,7 @@ async def main() -> None:
         task_queue="point-cloud-task-queue",
         workflows=[MlsPipelineWorkflow],
         activities=[
+            las_choice,
             load_metadata_for_file,
             reproject_file,
             insert_file_into_db,

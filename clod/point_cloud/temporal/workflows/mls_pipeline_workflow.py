@@ -117,7 +117,6 @@ class MlsPipelineWorkflow:
         reproject_futures = [
             workflow.execute_activity("reproject_file",
                 args=[file_path, in_srs, out_srs],
-                heartbeat_timeout=timedelta(minutes=10),
                 schedule_to_close_timeout=timedelta(hours=3),
                 retry_policy=RetryPolicy(maximum_attempts=1)
                  )

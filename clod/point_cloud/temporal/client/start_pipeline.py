@@ -47,10 +47,13 @@ async def run_workflow(
         generate_tiles=generate_tiles
     )
 
-    workflow_id = f"mls-pipeline-{hash(tuple(file_paths)) & 0xFFFF:x}"
+    if file_paths:
+        workflow_id = f"mls-pipeline-{hash(tuple(file_paths)) & 0xFFFF:x}"
+    else:
+        workflow_id = f"mls-pipeline-{int(time.time())}"
 
     handle = await client.start_workflow(
-        'MlsPipelineWorkflow.run',
+        'MlsPipelineWorkflow',
         params,
         id=workflow_id,
         task_queue="point-cloud-task-queue",

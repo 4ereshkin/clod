@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 from typing import Optional
 from temporalio import activity
+from temporalio.exceptions import ApplicationError
 
 from clod.insert import Insert
 
@@ -37,19 +38,19 @@ async def insert_file_into_db(
     bool
         ``True`` if the import succeeded, ``False`` otherwise.
     """
-    loop = asyncio.get_running_loop()
 
     def _insert() -> bool:
         storage = Insert(config_path=config_path)
         storage.cloud_path = file_path
-        activity.heartbeat({"file_path": file_path, "status": "Insert started"})
         status = storage.run()
 
         if not status:
-            activity.heartbeat({"file_path": file_path, "status": "Insert failed"})
-
-        activity.heartbeat({"file_path": file_path, "status": "Insert completed"})
+            raise ApplicationError
 
         return status
 
-    return await loop.run_in_executor(None, _insert)
+    activity.heartbeat({"file_path": file_path, "status": "Начало загрузки в БД"})
+    result = await asyncio.to_thread(_insert)
+    activity.heartbeat(({"file_path": file_path, "status": "Загрузка в БД закончена"}))
+
+    return result

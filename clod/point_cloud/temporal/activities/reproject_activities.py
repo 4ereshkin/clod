@@ -42,7 +42,7 @@ async def reproject_file(
     loop = asyncio.get_running_loop()
 
     def _reproject() -> Optional[str]:
-        activity.heartbeat({"file_path": file_path, "in_srs": in_srs, "out_srs": out_srs})
+
         srs = SRS(cloud_path=file_path, in_srs=in_srs, out_srs=out_srs)
         result = srs.run()
 

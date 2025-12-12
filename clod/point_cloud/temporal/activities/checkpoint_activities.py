@@ -26,7 +26,7 @@ async def las_choice() -> List[str]:
     :return:
     """
     def _get_files() -> List[str]:
-        file_paths = SelectFiles(template='templates/las.json').select_file()
+        file_paths = SelectFiles(template='clod/templates/las.json').select_file()
         if file_paths is None:
             raise ApplicationError(
                 f'Нужен как минимум 1 файл для работы пайплайна',
