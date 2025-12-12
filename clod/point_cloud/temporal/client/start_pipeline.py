@@ -74,6 +74,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(
                     description="Start the MLS point cloud pipeline workflow.")
     parser.add_argument(
+        "--files",
+        "-f",
+        nargs="+",
+        help=(
+            "Paths to LAS/LAZ files to process. "
+            "If omitted, files will be selected interactively via GUI on worker (las_choice activity)."
+        ),
+    )
+    parser.add_argument(
         "--in-srs",
                     default="EPSG:4490",
                     help="Input spatial reference system (default: EPSG:4490)")
