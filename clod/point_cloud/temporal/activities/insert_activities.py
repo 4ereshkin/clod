@@ -45,7 +45,7 @@ async def insert_file_into_db(
         status = storage.run()
 
         if not status:
-            raise ApplicationError
+            raise ApplicationError(f'Не удалось загрузить файл {file_path} в БД', non_retryable=False)
 
         return status
 

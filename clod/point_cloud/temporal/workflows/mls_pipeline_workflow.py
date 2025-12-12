@@ -16,14 +16,11 @@ the reprojected files and whether tile generation succeeded for each.
 
 from __future__ import annotations
 
-import json
-import time
 import asyncio
 from datetime import timedelta
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 
-from fontTools.misc.arrayTools import insetRect
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
@@ -36,7 +33,7 @@ class MlsPipelineParams:
     generate_tiles: bool = False
 
 
-@workflow.defn
+@workflow.defn()
 class MlsPipelineWorkflow:
     def __init__(self) -> None:
         self._file_paths: Optional[List[str]] = None
@@ -170,7 +167,7 @@ class MlsPipelineWorkflow:
                 fut = workflow.execute_activity(
                     "convert_to_tileset",
                     args=[file_path, "cesium_tiles"],
-                    schedule_to_close_timeout=timedelta(seconds=3600),
+                    schedule_to_close_timeout=timedelta(hours=1),
                     retry_policy=RetryPolicy(maximum_attempts=3),
                 )
                 tile_futures.append(fut)
