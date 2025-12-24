@@ -1,8 +1,12 @@
 import json
 import os
 import pdal
+import yaml
 from pathlib import Path
 from typing import Optional
+
+with open('point_cloud/temporal/workflows/config.yaml', 'r') as f:
+    VERSION = yaml.safe_load(f)['VERSION_INFO']['WORKFLOW_VERSION']
 
 
 class SRS:
@@ -17,7 +21,7 @@ class SRS:
     def reproject(self) -> Optional[str]:
 
         input_file = self.cloud_path
-        output_file = f"result_cloud/reprojected_clouds/{self._get_source_name()}_reproj.laz"
+        output_file = f"result_cloud/reprojected_clouds/{self._get_source_name()}_{VERSION}_reproj.laz"
         os.makedirs("result_cloud/reprojected_clouds", exist_ok=True)
 
         pipeline_json = {

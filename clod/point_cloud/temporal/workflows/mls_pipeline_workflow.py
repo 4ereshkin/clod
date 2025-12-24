@@ -21,8 +21,12 @@ from datetime import timedelta
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 
+import yaml
 from temporalio import workflow
 from temporalio.common import RetryPolicy
+
+with open('config.yaml', 'r') as f:
+    VERSION = yaml.safe_load(f.read())['VERSION_INFO']['WORKFLOW_VERSION']
 
 
 @dataclass
@@ -33,7 +37,7 @@ class MlsPipelineParams:
     generate_tiles: bool = False
 
 
-@workflow.defn()
+@workflow.defn(name=VERSION)
 class MlsPipelineWorkflow:
     def __init__(self) -> None:
         self._file_paths: Optional[List[str]] = None
