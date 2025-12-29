@@ -1,6 +1,6 @@
 3dtiles.zip
 *.zip
-db.json
+point_cloud/temporal/db.json
 3dtiles
 *.las
 *.laz
@@ -8,4 +8,4 @@ db.json
 *.pcd
 *.pdf
 /point_cloud/temporal_cli_1.5.1_windows_amd64/
-/app_math/
+/data/user_data/
