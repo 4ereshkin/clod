@@ -1,0 +1,170 @@
+from __future__ import annotations
+
+import asyncio
+import json
+import subprocess
+import tempfile
+from pathlib import Path
+from typing import Any, Dict, List
+
+from temporalio import activity
+
+from lidar_app.app.repo import Repo
+from lidar_app.app.config import settings
+from lidar_app.app.s3_store import S3Store, S3Ref
+
+
+def _pose_to_pdal_matrix(pose: dict) -> str:
+    """
+    PDAL filters.transformation expects a 4x4 matrix serialized as
+    'a b c d e f g h i j k l m n o p' (row-major).
+    pose: {"R": [[...],[...],[...]], "t":[x,y,z]}
+    """
+    R = pose.get("R") or [[1,0,0],[0,1,0],[0,0,1]]
+    t = pose.get("t") or [0,0,0]
+    M = [
+        [float(R[0][0]), float(R[0][1]), float(R[0][2]), float(t[0])],
+        [float(R[1][0]), float(R[1][1]), float(R[1][2]), float(t[1])],
+        [float(R[2][0]), float(R[2][1]), float(R[2][2]), float(t[2])],
+        [0.0, 0.0, 0.0, 1.0],
+    ]
+    flat = [str(x) for row in M for x in row]
+    return " ".join(flat)
+
+
+def _run_pdal_pipeline(pipeline: dict) -> None:
+    p = subprocess.run(
+        ["pdal", "pipeline", "--stdin"],
+        input=json.dumps(pipeline),
+        text=True,
+        capture_output=True,
+    )
+    if p.returncode != 0:
+        raise RuntimeError(
+            "pdal pipeline failed\n"
+            f"stdout:\n{p.stdout}\n"
+            f"stderr:\n{p.stderr}\n"
+            f"pipeline:\n{json.dumps(pipeline, indent=2)}\n"
+        )
+
+
+@activity.defn
+async def export_merged_laz(
+    company_id: str,
+    dataset_version_id: str,
+    schema_version: str,
+    out_name: str = "merged.laz",
+) -> Dict[str, Any]:
+    """
+    Downloads derived.reprojected_point_cloud for all scans in dataset_version,
+    applies absolute ScanPose (core.scan_poses) to each, merges into one LAZ,
+    uploads to S3. Returns s3 ref.
+    """
+
+    def _run() -> Dict[str, Any]:
+        repo = Repo()
+        s3 = S3Store(
+            settings.s3_endpoint,
+            settings.s3_access_key,
+            settings.s3_secret_key,
+            settings.s3_region,
+        )
+
+        scans = repo.list_scans_by_dataset_version(dataset_version_id)
+        if not scans:
+            raise RuntimeError(f"No scans in dataset_version_id={dataset_version_id}")
+
+        poses = repo.list_scan_poses_by_dataset_version(dataset_version_id)
+
+        pose_by_scan = {}
+        for p in poses:
+            if isinstance(p, dict):
+                sid = p.get("scan_id")
+                pose = p.get("pose")
+            else:
+                sid = p.scan_id
+                pose = p.pose
+            if sid and pose:
+                pose_by_scan[sid] = pose
+
+        # sanity: poses must exist for all scans you want to merge
+        missing = [s.id for s in scans if s.id not in pose_by_scan]
+        if missing:
+            raise RuntimeError(f"Missing scan_poses for scans: {missing}")
+
+        with tempfile.TemporaryDirectory() as td:
+            td = Path(td)
+
+            stages: List[dict] = []
+            local_files: List[Path] = []
+
+            # 1) download each derived cloud locally and add reader + transform stage
+            for s in scans:
+                art = repo.find_derived_artifact(s.id, "derived.reprojected_point_cloud", schema_version)
+                if not art:
+                    raise RuntimeError(f"derived.reprojected_point_cloud not found for scan {s.id}")
+
+                local = td / Path(art.s3_key).name
+                s3.download_file(S3Ref(art.s3_bucket, art.s3_key), str(local))
+                local_files.append(local)
+
+                stages.append({"type": "readers.las", "filename": str(local)})
+
+                # apply absolute pose
+                M = _pose_to_pdal_matrix(pose_by_scan[s.id])
+                stages.append({"type": "filters.transformation", "matrix": M})
+
+            # 2) write merged
+            out_local = td / out_name
+            stages.append({
+                "type": "writers.las",
+                "filename": str(out_local),
+                "compression": "laszip",
+            })
+
+            pipeline = {"pipeline": stages}
+            _run_pdal_pipeline(pipeline)
+
+            if not out_local.exists():
+                raise RuntimeError("Merged LAZ not produced by PDAL")
+
+            # 3) upload to S3
+            dvid = dataset_version_id
+            cid = company_id
+
+            out_key = (
+                f"tenants/{cid}/dataset_versions/{dvid}/"
+                f"derived/v{schema_version}/merged/point_cloud/{out_local.name}"
+            )
+
+            etag, size = s3.upload_file(S3Ref(settings.s3_bucket, out_key), str(out_local))
+
+            # ВОТ СЮДА
+            anchor_scan_id = scans[0].id
+            repo.upsert_derived_artifact(
+                company_id=company_id,
+                scan_id=anchor_scan_id,
+                kind="derived.merged_point_cloud",
+                schema_version=schema_version,
+                s3_bucket=settings.s3_bucket,
+                s3_key=out_key,
+                etag=etag,
+                size_bytes=size,
+                status="READY",
+                meta={
+                    "scope": "dataset_version",
+                    "dataset_version_id": dataset_version_id,
+                    "scan_ids": [s.id for s in scans],
+                },
+            )
+
+            return {
+                "bucket": settings.s3_bucket,
+                "key": out_key,
+                "etag": etag,
+                "size_bytes": size,
+                "scans": [s.id for s in scans],
+            }
+
+    activity.heartbeat({"stage": "export_merged_laz", "dataset_version_id": dataset_version_id})
+    return await asyncio.to_thread(_run)

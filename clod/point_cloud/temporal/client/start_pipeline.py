@@ -25,7 +25,7 @@ import time
 from temporalio.client import Client
 from temporalio.service import RPCError
 
-from clod.point_cloud.temporal.workflows.mls_pipeline_workflow import MlsPipelineWorkflow, MlsPipelineParams
+from point_cloud.temporal.workflows.mls_pipeline_workflow import MlsPipelineWorkflow, MlsPipelineParams
 
 
 async def run_workflow(
@@ -52,8 +52,9 @@ async def run_workflow(
     else:
         workflow_id = f"mls-pipeline-{int(time.time())}"
 
+    # Workflow name should match the name in @workflow.defn decorator (VERSION = 'MVP')
     handle = await client.start_workflow(
-        'MlsPipelineWorkflow',
+        'MVP',
         params,
         id=workflow_id,
         task_queue="point-cloud-task-queue",

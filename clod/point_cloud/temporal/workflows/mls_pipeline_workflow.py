@@ -25,7 +25,7 @@ import yaml
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-with open('config.yaml', 'r') as f:
+with open(r'point_cloud\temporal\config.yaml', 'r') as f:
     VERSION = yaml.safe_load(f.read())['VERSION_INFO']['WORKFLOW_VERSION']
 
 
@@ -38,7 +38,7 @@ class MlsPipelineParams:
 
 
 @workflow.defn(name=VERSION)
-class MlsPipelineWorkflow:
+class MlsPipelineWorkflows:
     def __init__(self) -> None:
         self._file_paths: Optional[List[str]] = None
 

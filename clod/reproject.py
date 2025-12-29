@@ -1,13 +1,8 @@
-import json
-import os
-import pdal
-import yaml
+# reproject.py
+from __future__ import annotations
+
+import subprocess
 from pathlib import Path
-from typing import Optional
-
-with open('point_cloud/temporal/workflows/config.yaml', 'r') as f:
-    VERSION = yaml.safe_load(f)['VERSION_INFO']['WORKFLOW_VERSION']
-
 
 class SRS:
     def __init__(self, cloud_path: str, in_srs: str, out_srs: str):
@@ -15,46 +10,43 @@ class SRS:
         self.in_srs = in_srs
         self.out_srs = out_srs
 
-    def _get_source_name(self) -> str:
-        return Path(self.cloud_path).stem
+    def run(self) -> str:
+        inp = Path(self.cloud_path)
+        out = inp.with_name(inp.stem + f"__{self.out_srs.replace(':','_')}" + inp.suffix)
 
-    def reproject(self) -> Optional[str]:
-
-        input_file = self.cloud_path
-        output_file = f"result_cloud/reprojected_clouds/{self._get_source_name()}_{VERSION}_reproj.laz"
-        os.makedirs("result_cloud/reprojected_clouds", exist_ok=True)
-
-        pipeline_json = {
-            "pipeline": [
-                {
-                    "type": "readers.las",
-                    "filename": input_file
-                },
-                {
-                    "type": "filters.reprojection",
-                    "in_srs": str(self.in_srs),
-                    "out_srs": str(self.out_srs)
-                },
-                {
-                    "type": "writers.las",
-                    "filename": output_file
-                }
-            ]
-        }
+        # Вариант A: pdal translate + reprojection
+        cmd = [
+            "pdal",
+            "translate",
+            str(inp),
+            str(out),
+            "reprojection",
+            f"--filters.reprojection.in_srs={self.in_srs}",
+            f"--filters.reprojection.out_srs={self.out_srs}",
+        ]
 
         try:
-            pipeline = pdal.Pipeline(json.dumps(pipeline_json))
-            pipeline.execute()
+            p = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(
+                "PDAL reprojection failed.\n"
+                f"CMD: {' '.join(cmd)}\n"
+                f"returncode: {e.returncode}\n"
+                f"stdout:\n{e.stdout}\n"
+                f"stderr:\n{e.stderr}\n"
+            ) from e
 
-            if os.path.exists(output_file):
-                print(f"Successfully reprojected: {output_file}")
-                return output_file
-            else:
-                print(f"Output file was not created: {output_file}")
-                return None
-        except Exception as e:
-            print(f'PDAL reproj failed for {input_file}: {e}')
-            return None
+        if not out.exists():
+            raise RuntimeError(
+                "PDAL finished without output file.\n"
+                f"CMD: {' '.join(cmd)}\n"
+                f"stdout:\n{p.stdout}\n"
+                f"stderr:\n{p.stderr}\n"
+            )
 
-    def run(self) -> Optional[str]:
-        return self.reproject()
+        return str(out)

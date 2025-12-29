@@ -2,7 +2,7 @@ import psycopg2 as ps
 from psycopg2 import sql
 
 from pandas import DataFrame
-from clod.storage import DbAgent
+from storage import DbAgent
 
 
 class Records(DbAgent):

@@ -117,7 +117,7 @@ class Checkpoint:
                 print('Метаданные должны быть dict')
                 return False
 
-            output_dir = Path("activities_data/checkpoint_metadata")
+            output_dir = Path("data/checkpoint_metadata")
             output_dir.mkdir(parents=True, exist_ok=True)
 
             file_name = Path(self.file_path).stem

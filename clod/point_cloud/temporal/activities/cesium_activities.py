@@ -12,7 +12,7 @@ import asyncio
 from typing import Optional
 from temporalio import activity
 
-from clod.cesium import CesiumImport
+from cesium import CesiumImport
 
 
 @activity.defn

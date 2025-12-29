@@ -13,7 +13,7 @@ import asyncio
 from typing import Optional, Dict, Any
 from temporalio import activity
 
-from clod.reproject import SRS
+from reproject import SRS
 
 
 @activity.defn

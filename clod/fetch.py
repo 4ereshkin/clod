@@ -1,7 +1,7 @@
 import json
 import pdal
 
-from clod.storage import DbAgent
+from storage import DbAgent
 
 from typing import Optional
 from pathlib import Path

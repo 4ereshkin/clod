@@ -3,7 +3,7 @@ import pdal
 import uuid
 
 from psycopg2 import sql
-from clod.storage import DbAgent
+from storage import DbAgent
 from urllib.parse import quote_plus
 
 from pathlib import Path
@@ -181,7 +181,7 @@ class Insert(DbAgent):
     
     def _save_metadata_file(self, source_name: str, meta_dict: dict) -> bool:
         try:
-            storage_dir = Path('activities_data/storage_metadata')
+            storage_dir = Path('data/storage_metadata')
             storage_dir.mkdir(exist_ok=True)
 
             source_dir = storage_dir / source_name

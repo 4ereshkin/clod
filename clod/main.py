@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from itertools import count
 
-from checkpoint import Checkpoint
+from gateway import Checkpoint
 from reproject import SRS
 from insert import Insert
 from fetch import Fetch

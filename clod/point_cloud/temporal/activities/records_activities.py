@@ -14,7 +14,7 @@ from typing import List, Dict, Any, Optional
 from temporalio import activity
 import pandas as pd
 
-from clod.records import Records
+from records import Records
 
 
 @activity.defn

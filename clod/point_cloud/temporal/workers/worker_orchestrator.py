@@ -24,13 +24,46 @@ import asyncio
 from temporalio.client import Client
 from temporalio.worker import Worker
 
-from clod.point_cloud.temporal.workflows.mls_pipeline_workflow import MlsPipelineWorkflow
-from clod.point_cloud.temporal.activities import (
+from point_cloud.temporal.workflows.registration_solver_workflow import RegistrationSolverWorkflow
+from point_cloud.temporal.activities.registration_icp_activities import refine_edges_with_icp
+from point_cloud.temporal.activities.preprocess_activities import preprocess_point_cloud
+
+from point_cloud.temporal.activities.registration_activities import (
+    collect_registration_graph,
+    solve_pose_graph,
+    persist_pose_graph_solution,)
+
+from point_cloud.temporal.activities.export_activities import (
+    export_merged_laz,
+)
+
+from point_cloud.temporal.activities.pipe_activities import resolve_crs_to_pdal_srs
+from point_cloud.temporal.activities.pipe_activities import (
+    load_ingest_manifest,
+    reproject_scan_to_target_crs,
+    build_registration_anchors,
+    propose_registration_edges,
+    propose_registration_edges_for_dataset,
+    compute_icp_edge,
+)
+from point_cloud.temporal.workflows.mls_new import MlsPipelineWorkflow
+from point_cloud.temporal.workflows.ingest_workflow import IngestWorkflow
+from point_cloud.temporal.activities import (
     las_choice,
     load_metadata_for_file,
     reproject_file,
     insert_file_into_db,
-    convert_to_tileset,
+    # convert_to_tileset,
+    create_scan,
+    ensure_company,
+    ensure_crs,
+    ensure_dataset,
+    ensure_dataset_version,
+    upload_raw_artifact,
+    create_ingest_run,
+    process_ingest_run,
+    get_scan,
+    list_raw_artifacts,
 )
 
 
@@ -46,13 +79,38 @@ async def main() -> None:
     worker = Worker(
         client,
         task_queue="point-cloud-task-queue",
-        workflows=[MlsPipelineWorkflow],
+        workflows=[MlsPipelineWorkflow, IngestWorkflow, RegistrationSolverWorkflow],
         activities=[
-            las_choice,
-            load_metadata_for_file,
-            reproject_file,
-            insert_file_into_db,
-            convert_to_tileset,
+            # ingest
+            ensure_company,
+            ensure_crs,
+            ensure_dataset,
+            ensure_dataset_version,
+            create_scan,
+            upload_raw_artifact,
+            create_ingest_run,
+            process_ingest_run,
+            get_scan,
+            list_raw_artifacts,
+
+            # pipeline / registration prep
+            load_ingest_manifest,
+            reproject_scan_to_target_crs,
+            build_registration_anchors,
+            propose_registration_edges,
+            resolve_crs_to_pdal_srs,
+
+            # registration solver
+            collect_registration_graph,
+            solve_pose_graph,
+            persist_pose_graph_solution,
+            compute_icp_edge,
+            propose_registration_edges_for_dataset,
+
+            refine_edges_with_icp,
+            export_merged_laz,
+
+            preprocess_point_cloud
         ],
     )
 

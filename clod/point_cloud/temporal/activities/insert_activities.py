@@ -15,7 +15,7 @@ from typing import Optional
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
-from clod.insert import Insert
+from insert import Insert
 
 
 @activity.defn
