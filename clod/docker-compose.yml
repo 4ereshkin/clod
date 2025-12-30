@@ -1,4 +1,16 @@
 services:
+  app:
+    build: .
+    container_name: app
+    restart: unless-stopped
+    depends_on:
+      postgres_app:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    env_file:
+      - .env
+
   postgres_app:
     image: postgres:16
     container_name: postgres_app
@@ -7,6 +19,8 @@ services:
       - POSTGRES_DB=${PGAPP_DB_NAME}
       - POSTGRES_USER=${PGAPP_DB_USER}
       - POSTGRES_PASSWORD=${PGAPP_DB_PASSWORD}
+    env_file:
+      - .env
     ports:
       - "5433:5432"
     volumes:
@@ -25,6 +39,8 @@ services:
       - POSTGRES_DB=${PGT_DB_NAME}
       - POSTGRES_USER=${PGT_DB_USER}
       - POSTGRES_PASSWORD=${PGT_DB_PASSWORD}
+    env_file:
+      - .env
     ports:
       - "5434:5432"
     volumes:
@@ -54,6 +70,8 @@ services:
       - DEFAULT_NAMESPACE_RETENTION=168h
       - SKIP_SCHEMA_SETUP=false
       - LOG_LEVEL=info
+    env_file:
+      - .env
     ports:
       - "7233:7233"
 
@@ -66,6 +84,8 @@ services:
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_DEFAULT_NAMESPACE=default
+    env_file:
+      - .env
     ports:
       - "18233:8080"
 
@@ -77,6 +97,8 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    env_file:
+      - .env
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -93,6 +115,8 @@ services:
       mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
       tail -f /dev/null
       "
+    env_file:
+      - .env
   
   portainer:
       image: portainer/portainer-ce:latest
@@ -102,3 +126,5 @@ services:
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
         - ${PD_DATA_PATH}:/data
+      env_file:
+        - .env
