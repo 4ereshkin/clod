@@ -1,0 +1,8 @@
+# Ignore .env file
+clod/.env
+
+# Ignore data directories
+clod/postgres_app_data/
+clod/postgres_temporal_data/
+clod/minio_data/
+clod/portainer_data/
