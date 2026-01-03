@@ -8,7 +8,7 @@ services:
       - POSTGRES_USER=${PGAPP_DB_USER}
       - POSTGRES_PASSWORD=${PGAPP_DB_PASSWORD}
     ports:
-      - "5433:5432"
+      - "${PGAPP_DB_PORT}:5432"
     volumes:
       - ${PGAPP_DB_VOLUME}:/var/lib/postgresql/data
     healthcheck:
@@ -26,7 +26,7 @@ services:
       - POSTGRES_USER=${PGT_DB_USER}
       - POSTGRES_PASSWORD=${PGT_DB_PASSWORD}
     ports:
-      - "5434:5432"
+      - "${PGT_DB_PORT}:5432"
     volumes:
       - ${PGT_DB_VOLUME}:/var/lib/postgresql/data
     healthcheck:
@@ -55,7 +55,7 @@ services:
       - SKIP_SCHEMA_SETUP=false
       - LOG_LEVEL=info
     ports:
-      - "7233:7233"
+      - "${TEMPORAL_PORT}:7233"
 
   temporal-ui:
     image: temporalio/ui:latest
@@ -67,7 +67,7 @@ services:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_DEFAULT_NAMESPACE=default
     ports:
-      - "18233:8080"
+      - "${TEMPORAL_UI_PORT}:8080"
 
   minio:
     image: minio/minio:latest
@@ -78,8 +78,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
     volumes:
       - ${MINIO_DATA_PATH}:/data
 
@@ -98,7 +98,7 @@ services:
       image: portainer/portainer-ce:latest
       container_name: portainer
       ports:
-        - "9443:9443"
+        - "${PORTAINER_PORT}:9443"
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
         - ${PD_DATA_PATH}:/data
