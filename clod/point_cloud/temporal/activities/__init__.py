@@ -10,10 +10,6 @@ whenever possible and return simple JSON‑serialisable results.
 from .gateway_activities import las_choice
 from .gateway_activities import load_metadata_for_file
 from .reproject_activities import reproject_file
-from .insert_activities import insert_file_into_db
-from .fetch_activities import fetch_file_from_db
-from .records_activities import read_records_table
-# from .cesium_activities import convert_to_tileset
 from .pipe_activities import resolve_crs_to_pdal_srs
 from .export_activities import export_merged_laz
 from .ingest_activities import (
@@ -33,10 +29,6 @@ __all__ = [
     "las_choice",
     "load_metadata_for_file",
     "reproject_file",
-    "insert_file_into_db",
-    "fetch_file_from_db",
-    "read_records_table",
-    # "convert_to_tileset",
     "create_scan",
     "ensure_company",
     "ensure_crs",
