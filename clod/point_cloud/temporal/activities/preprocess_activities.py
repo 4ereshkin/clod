@@ -37,8 +37,8 @@ async def preprocess_point_cloud(
     dataset_version_id: str,
     scan_id: str,
     schema_version: str,
-    voxel_size_m: float = 0.20,
-    mean_k: int = 30,
+    voxel_size_m: float = 0.10,
+    mean_k: int = 20,
     multiplier: float = 2.0,
 ) -> Dict[str, Any]:
     def _run() -> Dict[str, Any]:
@@ -60,7 +60,9 @@ async def preprocess_point_cloud(
 
             pipeline = {
                 "pipeline": [
-                    {"type": "readers.las", "filename": str(local_in)},
+                    {
+                        "type": "readers.las",
+                        "filename": str(local_in)},
                     {
                         "type": "filters.outlier",
                         "method": "statistical",
