@@ -1,0 +1,104 @@
+services:
+  postgres_app:
+    image: postgres:16
+    container_name: postgres_app
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${PGAPP_DB_NAME}
+      - POSTGRES_USER=${PGAPP_DB_USER}
+      - POSTGRES_PASSWORD=${PGAPP_DB_PASSWORD}
+    ports:
+      - "${PGAPP_DB_PORT}:5432"
+    volumes:
+      - ${PGAPP_DB_VOLUME}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app_db"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+
+  postgres_temporal:
+    image: postgres:16
+    container_name: postgres_temporal
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${PGT_DB_NAME}
+      - POSTGRES_USER=${PGT_DB_USER}
+      - POSTGRES_PASSWORD=${PGT_DB_PASSWORD}
+    ports:
+      - "${PGT_DB_PORT}:5432"
+    volumes:
+      - ${PGT_DB_VOLUME}:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d temporal"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+
+  temporal:
+    image: temporalio/auto-setup:latest
+    container_name: temporal
+    restart: unless-stopped
+    depends_on:
+      postgres_temporal:
+        condition: service_healthy
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_SEEDS=postgres_temporal
+      - POSTGRES_USER=${PGT_DB_USER}
+      - POSTGRES_PWD=${PGT_DB_PASSWORD}
+      - DBNAME=${PGT_DB_NAME}
+      - VISIBILITY_DBNAME=temporal_visibility
+      - DEFAULT_NAMESPACE=${TMP_DEFAULT_NAMESPACE}
+      - DEFAULT_NAMESPACE_RETENTION=168h
+      - SKIP_SCHEMA_SETUP=false
+      - LOG_LEVEL=info
+    ports:
+      - "${TEMPORAL_PORT}:7233"
+
+  temporal-ui:
+    image: temporalio/ui:latest
+    container_name: temporal-ui
+    restart: unless-stopped
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_DEFAULT_NAMESPACE=default
+    ports:
+      - "${TEMPORAL_UI_PORT}:8080"
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "${MINIO_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
+    volumes:
+      - ${MINIO_DATA_PATH}:/data
+
+  minio-client:
+    image: minio/mc:latest
+    container_name: minio-client
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+      tail -f /dev/null
+      "
+  
+  portainer:
+      image: portainer/portainer-ce:latest
+      container_name: portainer
+      ports:
+        - "${PORTAINER_PORT}:9443"
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - ${PD_DATA_PATH}:/data
