@@ -8,8 +8,8 @@ import yaml
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-from point_cloud.temporal.workflows.ingest_workflow import IngestWorkflowParams
-from point_cloud.temporal.workflows.registration_solver_workflow import RegistrationSolverParams
+from point_cloud.workflows.ingest_workflow import IngestWorkflowParams
+from point_cloud.workflows.registration_solver_workflow import RegistrationSolverParams
 
 with open(r'point_cloud\temporal\config.yaml', 'r') as f:
     VERSION = yaml.safe_load(f.read())['VERSION_INFO']['WORKFLOW_VERSION']

@@ -1,6 +1,5 @@
 import asyncio
 import time
-from pathlib import Path
 
 from temporalio.client import Client
 
@@ -13,7 +12,7 @@ project_root = script_dir.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from point_cloud.temporal.workflows.mls_new import MlsPipelineWorkflow, MlsPipelineParams
+from point_cloud.workflows.mls_new import MlsPipelineWorkflow, MlsPipelineParams
 
 async def main():
     company = "MaxCher"

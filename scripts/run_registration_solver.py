@@ -1,6 +1,6 @@
 import asyncio
 from temporalio.client import Client
-from point_cloud.temporal.workflows.registration_solver_workflow import RegistrationSolverParams
+from point_cloud.workflows.registration_solver_workflow import RegistrationSolverParams
 import yaml
 
 with open(r"config.yaml", "r") as f:

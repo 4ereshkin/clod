@@ -1,7 +1,7 @@
 .env
 3dtiles.zip
 *.zip
-point_cloud/temporal/db.json
+point_cloud/db.json
 3dtiles
 *.las
 *.laz

@@ -26,7 +26,7 @@ import time
 from temporalio.client import Client
 from temporalio.service import RPCError
 
-from point_cloud.temporal.workflows.ingest_workflow import IngestWorkflow, IngestWorkflowParams
+from point_cloud.workflows.ingest_workflow import IngestWorkflowParams
 
 
 async def run_ingest_workflow(

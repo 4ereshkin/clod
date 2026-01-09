@@ -24,21 +24,21 @@ import asyncio
 from temporalio.client import Client
 from temporalio.worker import Worker
 
-from point_cloud.temporal.workflows.registration_solver_workflow import RegistrationSolverWorkflow
-from point_cloud.temporal.activities.registration_icp_activities import refine_edges_with_icp
-from point_cloud.temporal.activities.preprocess_activities import preprocess_point_cloud
+from point_cloud.workflows.registration_solver_workflow import RegistrationSolverWorkflow
+from point_cloud.activities.registration_icp_activities import refine_edges_with_icp
+from point_cloud.activities.preprocess_activities import preprocess_point_cloud
 
-from point_cloud.temporal.activities.registration_activities import (
+from point_cloud.activities.registration_activities import (
     collect_registration_graph,
     solve_pose_graph,
     persist_pose_graph_solution,)
 
-from point_cloud.temporal.activities.export_activities import (
+from point_cloud.activities.export_activities import (
     export_merged_laz,
 )
 
-from point_cloud.temporal.activities.pipe_activities import resolve_crs_to_pdal_srs
-from point_cloud.temporal.activities.pipe_activities import (
+from point_cloud.activities.pipe_activities import resolve_crs_to_pdal_srs
+from point_cloud.activities.pipe_activities import (
     load_ingest_manifest,
     reproject_scan_to_target_crs,
     build_registration_anchors,
@@ -46,9 +46,9 @@ from point_cloud.temporal.activities.pipe_activities import (
     propose_registration_edges_for_dataset,
     compute_icp_edge,
 )
-from point_cloud.temporal.workflows.mls_new import MlsPipelineWorkflow
-from point_cloud.temporal.workflows.ingest_workflow import IngestWorkflow
-from point_cloud.temporal.activities import (
+from point_cloud.workflows.mls_new import MlsPipelineWorkflow
+from point_cloud.workflows.ingest_workflow import IngestWorkflow
+from point_cloud.activities import (
     create_scan,
     ensure_company,
     ensure_crs,

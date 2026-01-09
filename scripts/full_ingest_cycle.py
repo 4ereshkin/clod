@@ -28,7 +28,7 @@ from lidar_app.app.repo import Repo
 from temporalio.client import Client
 from temporalio.service import RPCError
 
-from point_cloud.temporal.workflows.ingest_workflow import IngestWorkflow, IngestWorkflowParams
+from point_cloud.workflows.ingest_workflow import IngestWorkflowParams
 
 
 def setup_company_crs_dataset(
@@ -113,7 +113,7 @@ async def run_ingest_workflow(
     print(f"   Workflow ID: {workflow_id}")
     print(f"   Артефакты: {len(artifacts)}")
 
-    from point_cloud.temporal.workflows.ingest_workflow import VERSION
+    from point_cloud.workflows.ingest_workflow import VERSION
     workflow_name = f"{VERSION}-ingest"
 
     handle = await client.start_workflow(
