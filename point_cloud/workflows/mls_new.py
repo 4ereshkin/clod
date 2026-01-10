@@ -11,7 +11,7 @@ from temporalio.common import RetryPolicy
 from point_cloud.workflows.ingest_workflow import IngestWorkflowParams
 from point_cloud.workflows.registration_solver_workflow import RegistrationSolverParams
 
-with open(r'point_cloud\temporal\config.yaml', 'r') as f:
+with open(r'D:\1_prod\point_cloud\config.yaml', 'r') as f:
     VERSION = yaml.safe_load(f.read())['VERSION_INFO']['WORKFLOW_VERSION']
 
 @dataclass

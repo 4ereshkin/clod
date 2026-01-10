@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from dotenv import load_dotenv
 import os
 
 
@@ -6,6 +7,7 @@ import os
 class Settings:
 
     # SoT PostgreSQL параметры
+    load_dotenv(dotenv_path=r'D:\1_prod\.env')
 
     _pgapp_db_name: str = os.getenv("PGAPP_DB_NAME")
     _pgapp_db_user: str = os.getenv("PGAPP_DB_USER")

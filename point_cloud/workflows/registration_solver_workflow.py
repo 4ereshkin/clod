@@ -8,7 +8,7 @@ import yaml
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-with open(r'D:\4. Иное по работе\lidar-project\clod\scripts\config.yaml', 'r') as f:
+with open(r'D:\1_prod\point_cloud\config.yaml', 'r') as f:
     VERSION = yaml.safe_load(f.read())['VERSION_INFO']['WORKFLOW_VERSION']
 
 @dataclass

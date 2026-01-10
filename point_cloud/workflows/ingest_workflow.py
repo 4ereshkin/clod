@@ -20,7 +20,7 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 from temporalio.exceptions import ApplicationError
 
-with open(r'point_cloud\temporal\config.yaml', 'r') as f:
+with open(r'D:\1_prod\point_cloud\config.yaml', 'r') as f:
     VERSION = yaml.safe_load(f.read())['VERSION_INFO']['WORKFLOW_VERSION']
 
 

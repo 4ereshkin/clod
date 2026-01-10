@@ -21,9 +21,9 @@ async def main():
     target_srs = "EPSG:4326"
     schema_version = "1.1.0"
 
-    cloud = Path(r"data\user_data\НПС Крутое\1\t100pro_2025-04-28-08-36-08_filter_map.laz").absolute()
-    path  = Path(r"data\user_data\НПС Крутое\1\path.txt").absolute()
-    cp    = Path(r"data\user_data\НПС Крутое\1\ControlPoint.txt").absolute()
+    cloud = Path(r"D:\1_prod\data\user_data\НПС Крутое\1\t100pro_2025-04-28-08-36-08_filter_map.laz").absolute()
+    path  = Path(r"D:\1_prod\data\user_data\НПС Крутое\1\path.txt").absolute()
+    cp    = Path(r"D:\1_prod\data\user_data\НПС Крутое\1\ControlPoint.txt").absolute()
 
     artifacts = [
         {"kind": "raw.point_cloud", "local_file_path": str(cloud)},
