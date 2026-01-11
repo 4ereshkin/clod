@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import asdict
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Iterable
 from pathlib import Path
 
 import json
@@ -82,6 +82,92 @@ async def read_cloud_hexbin(geojson_dst: str,) -> Dict[str, Any]:
     })
     return await asyncio.to_thread(_run)
 
+
+def _percentile(values: Iterable[float], percentile: float) -> float:
+    if not 0 <= percentile <= 1:
+        raise ValueError("percentile must be between 0 and 1")
+    ordered = sorted(values)
+    if not ordered:
+        return 0.0
+    index = int(round((len(ordered) - 1) * percentile))
+    return float(ordered[index])
+
+def _extract_threshold(geojson: Dict[str, Any]) -> Optional[float]:
+    props = geojson.get("properties", {})
+    if isinstance(props, dict) and "threshold" in props:
+        try:
+            return float(props["threshold"])
+        except (TypeError, ValueError):
+            return None
+    features = geojson.get("features", [])
+    if features:
+        feature_props = features[0].get("properties", {})
+        if isinstance(feature_props, dict) and "threshold" in feature_props:
+            try:
+                return float(feature_props["threshold"])
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
+@activity.defn
+async def extract_hexbin_fields(geojson_text: Dict[str, Any]) -> Dict[str, Any]:
+    def _run() -> Dict[str, Any]:
+        features = geojson_text.get('features', [])
+        if not isinstance(features, list) or not features:
+            raise ApplicationError('Hexbin GeoJSON has no features to aggregate')
+
+        counts: list[float] = []
+        for feature in features:
+            props = feature.get('properties', {})
+            if not isinstance(props, dict):
+                continue
+            count = props.get('count')
+            if count is None:
+                continue
+            try:
+                counts.append(float(count))
+            except (TypeError, ValueError):
+                continue
+
+        if not counts:
+            raise ApplicationError('Hexbin GeoJSON has no numeric count values')
+
+        total = float(len(counts))
+        count_sum = float(sum(counts))
+        count_min = float(min(counts))
+        count_max = float(max(counts))
+        count_mean = count_sum / total
+
+        threshold = _extract_threshold(geojson_text)
+        below = None
+        above = None
+        if threshold is not None:
+            below = sum(1 for value in counts if value < threshold)
+            above = sum(1 for value in counts if value > threshold)
+
+        return {
+            "cells_total": int(total),
+            "count_sum": count_sum,
+            "count_min": count_min,
+            "count_max": count_max,
+            "count_mean": count_mean,
+            "count_p50": _percentile(counts, 0.50),
+            "count_p90": _percentile(counts, 0.90),
+            "count_p99": _percentile(counts, 0.99),
+            "cells_below_threshold": below,
+            "cells_above_threshold": above,
+            "threshold": threshold,
+        }
+    activity.heartbeat({
+        'stage':'extract_hexbin_fields',
+    })
+    return await asyncio.to_thread(_run)
+
+
 @activity.defn
 async def aggregate_metadata(clouds_meta: List[Dict[str, Any]]) -> Dict[str, Any]:
     def _run() -> Dict[str, Any]:
+        pass
+
+    pass

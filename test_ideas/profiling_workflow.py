@@ -65,6 +65,8 @@ class ProfilingWorkflow:
                 workflow.logger.error(f'Failed to process file: {exc}')
                 results.append(None)
 
+        self._stage = 'Extracting hexbin GeoJSON fields for manifest'
+
         self._stage = 'Aggregating results'
 
 
