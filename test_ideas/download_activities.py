@@ -1,6 +1,52 @@
 from __future__ import annotations
 
-from dataclasses import asdict
+from pathlib import Path
 from typing import Any, Dict, List
 
+import asyncio
+
 from temporalio import activity
+
+from lidar_app.app.config import settings
+from lidar_app.app.repo import Repo
+from lidar_app.app.s3_store import S3Store
+from lidar_app.app.artifact_service import download_artifact
+
+
+@activity.defn
+async def download_from_s3(
+        bucket: str,
+        key: str,
+        dst_dir: Path,
+):
+    def _run():
+        s3 = S3Store(
+            settings.s3_endpoint,
+            settings.s3_access_key,
+            settings.s3_secret_key,
+            settings.s3_region,
+        )
+
+        dst_path = Path(dst_dir)
+        dst_path.mkdir(parents=True, exist_ok=True)
+
+        local_path = download_artifact(s3=s3,
+                                       bucket=bucket,
+                                       key=key,
+                                       dst_dir=dst_dir)
+        return str(local_path)
+
+    activity.heartbeat({'stage': 'download_from_s3', 'key': key, 'dst_dir': dst_dir})
+    return await asyncio.to_thread(_run)
+
+@activity.defn
+async def list_raw_artifacts(
+        scan_id: str
+):
+    def _run():
+        repo = Repo()
+        res = repo.list_raw_artifacts(scan_id=scan_id)
+        return res
+
+    activity.heartbeat({'stage': 'list_raw_artifacts', 'scan_id': scan_id})
+    return await asyncio.to_thread(_run)

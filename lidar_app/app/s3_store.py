@@ -30,7 +30,6 @@ class S3Store:
             ),
         )
 
-
     def upload_file(self, ref: S3Ref, local_path: str) -> Tuple[str, int]:
         self.client.upload_file(local_path, ref.bucket, ref.key)
         head = self.client.head_object(Bucket=ref.bucket, Key=ref.key)
