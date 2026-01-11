@@ -18,6 +18,7 @@ with open(r'D:\1_prod\point_cloud\config.yaml', 'r') as f:
 class ProfilingWorkflowParams:
     scan_id: str
     cloud_path: str
+    geojson_dst: str
 
 
 @workflow.defn(name=f'{VERSION}-profiling')
@@ -35,14 +36,36 @@ class ProfilingWorkflow:
     async def run(self, params: ProfilingWorkflowParams):
         self._stage = 'Downloading file'
 
-        point_cloud_paths = await workflow.execute_child_workflow(
+        point_cloud_files = await workflow.execute_child_workflow(
             'DownloadWorkflow',
             args=[DownloadWorkflowParams(
                 scan_id=params.scan_id,
                 dst_dir=params.cloud_path,
                 kinds=["raw.point_cloud"])],
-
         )
+
+        self._stage = 'Profiling files'
+
+        activities = []
+        for file_path in point_cloud_files:
+            activity_handle = workflow.start_activity(
+                'point_cloud_meta',
+                args = [file_path, params.geojson_dst],
+                start_to_close_timeout=timedelta(minutes=30),
+                retry_policy=RetryPolicy(maximum_attempts=1),
+            )
+            activities.append(activity_handle)
+
+        results = []
+        for handle in activities:
+            try:
+                result = await handle
+                results.append(result)
+            except Exception as exc:
+                workflow.logger.error(f'Failed to process file: {exc}')
+                results.append(None)
+
+        self._stage = 'Aggregating results'
 
 
 """
