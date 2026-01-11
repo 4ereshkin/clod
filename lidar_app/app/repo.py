@@ -156,7 +156,7 @@ class Repo:
                 meta=meta or {},)
             )
 
-    def get_crs(self, crs_id: str) -> CRS:
+    def get_crs(self, crs_id: str):
         with self.session() as db:
             crs = db.get(CRS, crs_id)
             if not crs:
@@ -480,7 +480,6 @@ class Repo:
             )
             return bool(res.rowcount)
 
-
     def get_ingest_run(self, run_id: int)-> IngestRun:
         with self.session() as db:
             run = db.get(IngestRun, run_id)
@@ -488,7 +487,6 @@ class Repo:
                 raise RuntimeError(f"IngestRun {run_id} not found")
             db.expunge(run)
             return run
-
 
     def list_scans_by_dataset_version(self, dataset_version_id: str):
         with self.session() as db:

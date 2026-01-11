@@ -19,3 +19,4 @@ data/
 logs/
 *.log
 /temporal_cli_1.5.1_windows_amd64/
+/exp/

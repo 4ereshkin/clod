@@ -63,3 +63,8 @@ async def ensure_dataset_version(dataset_id: str, bump: bool = False) -> Dict[st
             "version": dv.version,
         }
     return await asyncio.to_thread(_ensure)
+
+@activity.defn
+async def get_crs(
+):
+    pass
