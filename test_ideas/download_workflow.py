@@ -30,7 +30,7 @@ class DownloadWorkflow:
         self._scan_id: Optional[str] = None
 
     @workflow.query
-    def progress(self) -> dict:
+    async def progress(self) -> dict:
         return {
             'stage': self._stage,
             'scan_id': self._scan_id,
