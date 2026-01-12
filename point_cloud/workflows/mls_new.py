@@ -4,15 +4,14 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import Dict, Any, Optional, List
 
-import yaml
+import os
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
 from point_cloud.workflows.ingest_workflow import IngestWorkflowParams
 from point_cloud.workflows.registration_solver_workflow import RegistrationSolverParams
 
-with open(r'D:\1_prod\point_cloud\config.yaml', 'r') as f:
-    VERSION = yaml.safe_load(f.read())['VERSION_INFO']['WORKFLOW_VERSION']
+VERSION = os.environ["WORKFLOW_VERSION"]
 
 @dataclass
 class MlsPipelineParams:

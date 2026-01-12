@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import yaml
+import os
 
 from typing import Optional, List, Dict, Any
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-with open(r'point_cloud\temporal\config.yaml', 'r') as f:
-    VERSION = yaml.safe_load(f.read())['VERSION_INFO']['WORKFLOW_VERSION']
+VERSION = os.environ["WORKFLOW_VERSION"]
 
 
 @dataclass

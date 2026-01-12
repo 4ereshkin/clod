@@ -11,17 +11,16 @@ This workflow coordinates the ingestion process:
 
 from __future__ import annotations
 
+import os
 from datetime import timedelta
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 
-import yaml
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 from temporalio.exceptions import ApplicationError
 
-with open(r'D:\1_prod\point_cloud\config.yaml', 'r') as f:
-    VERSION = yaml.safe_load(f.read())['VERSION_INFO']['WORKFLOW_VERSION']
+VERSION = os.environ["WORKFLOW_VERSION"]
 
 
 @dataclass
@@ -198,4 +197,3 @@ class IngestWorkflow:
             "process_result": process_result,
             "errors": self._errors,
         }
-
