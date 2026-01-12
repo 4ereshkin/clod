@@ -2,16 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 import yaml
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 from temporalio.exceptions import ApplicationError
 
-from lidar_app.app.config import settings
-from lidar_app.app.repo import Repo
-from lidar_app.app.s3_store import S3Store
 
 with open(r'D:\1_prod\point_cloud\config.yaml', 'r') as f:
     VERSION = yaml.safe_load(f.read())['VERSION_INFO']['WORKFLOW_VERSION']

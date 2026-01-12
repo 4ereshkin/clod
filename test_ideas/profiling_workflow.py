@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any, Dict, List, Optional
+from typing import Dict
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
@@ -88,10 +88,6 @@ class ProfilingWorkflow:
             start_to_close_timeout=timedelta(minutes=5),
             retry_policy=RetryPolicy(maximum_attempts=1),
         )
-
-
-
-        self._stage = 'Aggregating results'
 
 
 """
