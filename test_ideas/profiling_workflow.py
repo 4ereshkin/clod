@@ -72,6 +72,22 @@ class ProfilingWorkflow:
             retry_policy=RetryPolicy(maximum_attempts=1),
         )
 
+        self._stage = 'Uploading hexbin GeoJSON'
+        upload_info = await workflow.execute_activity(
+            "upload_hexbin",
+            args=[params.scan_id, params.geojson_dst],
+            start_to_close_timeout=timedelta(minutes=5),
+            retry_policy=RetryPolicy(maximum_attempts=1),
+        )
+
+        self._stage = 'Uploading profiling manifest'
+        manifest_info = await workflow.execute_activity(
+            "upload_profiling_manifest",
+            args=[params.scan_id, meta, hexbin_fields, upload_info],
+            start_to_close_timeout=timedelta(minutes=5),
+            retry_policy=RetryPolicy(maximum_attempts=1),
+        )
+
 
 
         self._stage = 'Aggregating results'
