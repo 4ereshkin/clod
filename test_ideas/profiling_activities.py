@@ -166,6 +166,10 @@ async def extract_hexbin_fields(geojson_text: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @activity.defn
+async def upload_hexbin()
+
+
+@activity.defn
 async def aggregate_metadata(clouds_meta: List[Dict[str, Any]]) -> Dict[str, Any]:
     def _run() -> Dict[str, Any]:
         pass

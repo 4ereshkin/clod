@@ -36,38 +36,41 @@ class ProfilingWorkflow:
     async def run(self, params: ProfilingWorkflowParams):
         self._stage = 'Downloading file'
 
-        point_cloud_files = await workflow.execute_child_workflow(
-            'DownloadWorkflow',
-            args=[DownloadWorkflowParams(
+        files_by_kind: Dict[str, str] = await workflow.execute_child_workflow(
+            f"{VERSION}-download",
+            DownloadWorkflowParams(
                 scan_id=params.scan_id,
                 dst_dir=params.cloud_path,
-                kinds=["raw.point_cloud"])],
+                kinds=["raw.point_cloud"],
+            ),
         )
+
+        cloud_file = files_by_kind["raw.point_cloud"]
 
         self._stage = 'Profiling files'
 
-        activities = []
-        for file_path in point_cloud_files:
-            activity_handle = workflow.start_activity(
-                'point_cloud_meta',
-                args = [file_path, params.geojson_dst],
-                start_to_close_timeout=timedelta(minutes=30),
-                retry_policy=RetryPolicy(maximum_attempts=1),
-            )
-            activities.append(activity_handle)
+        meta = await workflow.execute_activity(
+            "point_cloud_meta",
+            args=[cloud_file, params.geojson_dst],
+            start_to_close_timeout=timedelta(minutes=30),
+            retry_policy=RetryPolicy(maximum_attempts=1),
+        )
 
-        results = []
-        for handle in activities:
-            try:
-                result = await handle
-                results.append(result)
-            except Exception as exc:
-                workflow.logger.error(f'Failed to process file: {exc}')
-                results.append(None)
+        self._stage = 'Reading hexbin GeoJSON'
+        geojson = await workflow.execute_activity(
+            "read_cloud_hexbin",
+            args=[params.geojson_dst],
+            start_to_close_timeout=timedelta(minutes=5),
+            retry_policy=RetryPolicy(maximum_attempts=1),
+        )
 
-
-
-        self._stage = 'Extracting hexbin GeoJSON fields for manifest'
+        self._stage = 'Extracting hexbin GeoJSON fields'
+        hexbin_fields = await workflow.execute_activity(
+            "extract_hexbin_fields",
+            args=[geojson],
+            start_to_close_timeout=timedelta(minutes=5),
+            retry_policy=RetryPolicy(maximum_attempts=1),
+        )
 
 
 
