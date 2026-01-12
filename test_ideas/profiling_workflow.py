@@ -32,6 +32,7 @@ class ProfilingWorkflow:
             'stage': self._stage,
                 }
 
+
     @workflow.run
     async def run(self, params: ProfilingWorkflowParams):
         self._stage = 'Downloading file'

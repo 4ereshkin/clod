@@ -8,10 +8,10 @@ js = [
     {"type": "filters.info"},
     {"type": "filters.stats"},
     {"type": "filters.hexbin",
-     "density": r"D:\1_prod\test_ideas\hexsy.geojson"}
+     "density": r"D:\1_prod\test_ideas\hex.geojson"}
 ]
 
 
 pipe = pdal.Pipeline(json.dumps(js))
 pipe.execute()
-pprint.pprint(pipe.metadata())
+pprint.pprint(pipe.metadata)
