@@ -11,6 +11,11 @@ import pdal
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
+from lidar_app.app.artifact_service import store_artifact
+from lidar_app.app.config import settings
+from lidar_app.app.repo import Repo
+from lidar_app.app.s3_store import scan_prefix, S3Store
+
 
 @activity.defn
 async def point_cloud_meta(
@@ -166,7 +171,61 @@ async def extract_hexbin_fields(geojson_text: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @activity.defn
-async def upload_hexbin()
+async def upload_hexbin(
+        scan_id: str,
+        geojson_path: str,
+        kind: str = 'derived.profiling_hexbin'
+) -> Dict[str, Any]:
+    def _run() -> Dict[str, Any]:
+        repo = Repo()
+        scan = repo.get_scan(scan_id)
+
+        local_path = Path(geojson_path)
+        if not local_path.exists():
+            raise ApplicationError(f"Hexbin GeoJSON not found: {local_path}")
+
+        prefix = scan_prefix(scan.company_id, scan.dataset_version_id, scan_id)
+        filename = local_path.name
+        key = f"{prefix}/derived/v{scan.schema_version}/profiling/hexbin/{filename}"
+
+        s3 = S3Store(
+            settings.s3_endpoint,
+            settings.s3_access_key,
+            settings.s3_secret_key,
+            settings.s3_region,
+        )
+
+        result = store_artifact(
+            repo=repo,
+            s3=s3,
+            company_id=scan.company_id,
+            scan_id=scan_id,
+            kind=kind,
+            schema_version=scan.schema_version,
+            bucket=settings.s3_bucket,
+            key=key,
+            local_file_path=str(local_path),
+            content_type="application/geo+json",
+            status="READY",
+            meta={"filename": filename},
+            upsert=True,
+        )
+
+        return {
+            "bucket": result["bucket"],
+            "key": result["key"],
+            "etag": result["etag"],
+            "size_bytes": result["size_bytes"],
+            "kind": result["kind"],
+        }
+
+    activity.heartbeat({
+        "stage": "upload_hexbin",
+        "scan_id": scan_id,
+        "geojson_path": geojson_path,
+    })
+
+    return await asyncio.to_thread(_run)
 
 
 @activity.defn

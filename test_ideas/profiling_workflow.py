@@ -32,6 +32,7 @@ class ProfilingWorkflow:
             'stage': self._stage,
                 }
 
+
     @workflow.run
     async def run(self, params: ProfilingWorkflowParams):
         self._stage = 'Downloading file'
@@ -72,7 +73,13 @@ class ProfilingWorkflow:
             retry_policy=RetryPolicy(maximum_attempts=1),
         )
 
-
+        self._stage = 'Uploading hexbin GeoJSON'
+        upload_info = await workflow.execute_activity(
+            "upload_hexbin",
+            args=[params.scan_id, params.geojson_dst],
+            start_to_close_timeout=timedelta(minutes=5),
+            retry_policy=RetryPolicy(maximum_attempts=1),
+        )
 
         self._stage = 'Aggregating results'
 
