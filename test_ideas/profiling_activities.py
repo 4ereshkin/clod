@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import asdict
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Iterable
 from pathlib import Path
 
@@ -129,6 +130,8 @@ async def extract_hexbin_fields(geojson_text: Dict[str, Any]) -> Dict[str, Any]:
                 continue
             count = props.get('count')
             if count is None:
+                count = props.get('COUNT')
+            if count is None:
                 continue
             try:
                 counts.append(float(count))
@@ -174,7 +177,7 @@ async def extract_hexbin_fields(geojson_text: Dict[str, Any]) -> Dict[str, Any]:
 async def upload_hexbin(
         scan_id: str,
         geojson_path: str,
-        kind: str = 'derived.profiling_hexbin'
+        kind: str = "derived.profiling_hexbin",
 ) -> Dict[str, Any]:
     def _run() -> Dict[str, Any]:
         repo = Repo()
@@ -224,13 +227,71 @@ async def upload_hexbin(
         "scan_id": scan_id,
         "geojson_path": geojson_path,
     })
-
     return await asyncio.to_thread(_run)
 
 
 @activity.defn
-async def aggregate_metadata(clouds_meta: List[Dict[str, Any]]) -> Dict[str, Any]:
+async def upload_profiling_manifest(
+        scan_id: str,
+        point_cloud_meta: Dict[str, Any],
+        hexbin_fields: Dict[str, Any],
+        hexbin_artifact: Dict[str, Any],
+        kind: str = "derived.profiling_manifest",
+) -> Dict[str, Any]:
     def _run() -> Dict[str, Any]:
-        pass
+        repo = Repo()
+        scan = repo.get_scan(scan_id)
 
-    pass
+        manifest = {
+            "scan_id": scan_id,
+            "company_id": scan.company_id,
+            "dataset_id": scan.dataset_id,
+            "dataset_version_id": scan.dataset_version_id,
+            "schema_version": scan.schema_version,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "point_cloud_meta": point_cloud_meta,
+            "hexbin_fields": hexbin_fields,
+            "hexbin_artifact": hexbin_artifact,
+        }
+
+        prefix = scan_prefix(scan.company_id, scan.dataset_version_id, scan_id)
+        key = f"{prefix}/derived/v{scan.schema_version}/profiling/manifest.json"
+        body = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
+
+        s3 = S3Store(
+            settings.s3_endpoint,
+            settings.s3_access_key,
+            settings.s3_secret_key,
+            settings.s3_region,
+        )
+
+        result = store_artifact(
+            repo=repo,
+            s3=s3,
+            company_id=scan.company_id,
+            scan_id=scan_id,
+            kind=kind,
+            schema_version=scan.schema_version,
+            bucket=settings.s3_bucket,
+            key=key,
+            data=body,
+            content_type="application/json",
+            status="READY",
+            meta={"filename": "manifest.json"},
+            upsert=True,
+        )
+
+        return {
+            "bucket": result["bucket"],
+            "key": result["key"],
+            "etag": result["etag"],
+            "size_bytes": result["size_bytes"],
+            "kind": result["kind"],
+        }
+
+    activity.heartbeat({
+        "stage": "upload_profiling_manifest",
+        "scan_id": scan_id,
+    })
+    return await asyncio.to_thread(_run)
+
