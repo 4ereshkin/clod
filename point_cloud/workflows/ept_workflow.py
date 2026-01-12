@@ -1,6 +1,5 @@
+import os
 from datetime import timedelta
-
-import yaml
 
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
@@ -9,10 +8,8 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 from temporalio.exceptions import ApplicationError
 
-with open(r'point_cloud\temporal\config.yaml', 'r') as f:
-    file = yaml.safe_load(f.read())
-    WORKFLOW_VERSION = file['VERSION_INFO']['WORKFLOW_VERSION']
-    SCHEMA_VERSION = file['VERSION_INFO']['SCHEMA_VERSION']
+WORKFLOW_VERSION = os.environ["WORKFLOW_VERSION"]
+SCHEMA_VERSION = os.environ["SCHEMA_VERSION"]
 
 
 @dataclass
@@ -69,4 +66,3 @@ class EptWorkflow:
         dataset_version_id = dv['id']
 
         # TODO: Максим из будущего, я знаю ты это прочтёшь, но посмотри и законспектируй этот крутой видос https://www.youtube.com/watch?v=vBD4jzv0oJ0
-

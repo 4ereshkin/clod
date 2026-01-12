@@ -4,12 +4,11 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import Dict, Any
 
-import yaml
+import os
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-with open(r'D:\1_prod\point_cloud\config.yaml', 'r') as f:
-    VERSION = yaml.safe_load(f.read())['VERSION_INFO']['WORKFLOW_VERSION']
+VERSION = os.environ["WORKFLOW_VERSION"]
 
 @dataclass
 class RegistrationSolverParams:

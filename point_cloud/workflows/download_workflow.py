@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Dict, List, Optional
 
-import yaml
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 from temporalio.exceptions import ApplicationError
 
-with open(r'D:\1_prod\point_cloud\config.yaml', 'r') as f:
-    VERSION = yaml.safe_load(f.read())['VERSION_INFO']['WORKFLOW_VERSION']
+VERSION = os.environ["WORKFLOW_VERSION"]
 
 
 @dataclass
