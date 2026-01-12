@@ -35,6 +35,12 @@ class ProfilingWorkflow:
     async def run(self, params: ProfilingWorkflowParams) -> Dict[str, object]:
         self._stage = 'Downloading file'
 
+        geojson_dst = os.path.join(
+            params.geojson_dst,
+            params.scan_id,
+            f"{params.scan_id}.geojson",
+        )
+
         files_by_kind: Dict[str, str] = await workflow.execute_child_workflow(
             f"{VERSION}-download",
             DownloadWorkflowParams(
@@ -50,7 +56,7 @@ class ProfilingWorkflow:
 
         meta = await workflow.execute_activity(
             "point_cloud_meta",
-            args=[cloud_file, params.geojson_dst],
+            args=[cloud_file, geojson_dst],
             start_to_close_timeout=timedelta(minutes=30),
             retry_policy=RetryPolicy(
                 maximum_attempts=3,
@@ -63,7 +69,7 @@ class ProfilingWorkflow:
         self._stage = 'Reading hexbin GeoJSON'
         geojson = await workflow.execute_activity(
             "read_cloud_hexbin",
-            args=[params.geojson_dst],
+            args=[geojson_dst],
             start_to_close_timeout=timedelta(minutes=5),
             retry_policy=RetryPolicy(
                 maximum_attempts=3,
@@ -89,7 +95,7 @@ class ProfilingWorkflow:
         self._stage = 'Uploading hexbin GeoJSON'
         upload_info = await workflow.execute_activity(
             "upload_hexbin",
-            args=[params.scan_id, params.geojson_dst],
+            args=[params.scan_id, geojson_dst],
             start_to_close_timeout=timedelta(minutes=5),
             retry_policy=RetryPolicy(
                 maximum_attempts=3,
@@ -116,7 +122,7 @@ class ProfilingWorkflow:
         return {
             "scan_id": params.scan_id,
             "cloud_file": cloud_file,
-            "geojson_dst": params.geojson_dst,
+            "geojson_dst": geojson_dst,
             "meta": meta,
             "hexbin_fields": hexbin_fields,
             "upload_info": upload_info,
