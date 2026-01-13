@@ -149,7 +149,7 @@ async def ensure_crs(
 @activity.defn
 async def ensure_dataset(
     company_id: str,
-    crs_id: str,
+    crs_id: Optional[str],
     name: str,
 ) -> str:
     def _ensure():

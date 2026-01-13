@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 import os
 
 from temporalio import workflow
@@ -12,20 +12,19 @@ VERSION = os.environ["WORKFLOW_VERSION"]
 
 
 @dataclass
-class PreprocessPipelineParams:
+class ReprojectWorkflowParams:
     company_id: str
     dataset_version_id: str
     schema_version: str = "1.1.0"
     scan_ids: Optional[List[str]] = None
-    input_kind: str = "derived.reprojected_point_cloud"
-    output_kind: str = "derived.preprocessed_point_cloud"
-    voxel_size_m: float = 0.10
-    mean_k: int = 20
-    multiplier: float = 2.0
+    in_crs_id: Optional[str] = None
+    out_crs_id: Optional[str] = None
+    in_srs: Optional[str] = None
+    out_srs: Optional[str] = None
 
 
-@workflow.defn(name=f"{VERSION}-preprocessing_workflow")
-class PreprocessPipeline:
+@workflow.defn(name=f"{VERSION}-reproject")
+class ReprojectWorkflow:
     def __init__(self) -> None:
         self._stage: str = "Initializing"
         self._processed: list[str] = []
@@ -35,8 +34,30 @@ class PreprocessPipeline:
         return {"stage": self._stage, "processed": self._processed}
 
     @workflow.run
-    async def run(self, params: PreprocessPipelineParams) -> Dict[str, Any]:
+    async def run(self, params: ReprojectWorkflowParams) -> Dict[str, Any]:
         rp_fast = RetryPolicy(maximum_attempts=3)
+
+        self._stage = "resolve_srs"
+        in_srs = params.in_srs
+        if not in_srs and params.in_crs_id:
+            in_srs = await workflow.execute_activity(
+                "resolve_crs_to_pdal_srs",
+                args=[params.in_crs_id],
+                start_to_close_timeout=timedelta(seconds=30),
+                retry_policy=rp_fast,
+            )
+
+        out_srs = params.out_srs
+        if not out_srs and params.out_crs_id:
+            out_srs = await workflow.execute_activity(
+                "resolve_crs_to_pdal_srs",
+                args=[params.out_crs_id],
+                start_to_close_timeout=timedelta(seconds=30),
+                retry_policy=rp_fast,
+            )
+
+        if not in_srs or not out_srs:
+            raise ValueError("Both input and output SRS must be provided or resolvable")
 
         self._stage = "resolve_scans"
         scan_ids = list(params.scan_ids or [])
@@ -49,23 +70,18 @@ class PreprocessPipeline:
             )
 
         results = []
-        self._stage = "preprocess_scans"
+        self._stage = "reproject_scans"
         for scan_id in scan_ids:
             result = await workflow.execute_activity(
-                "preprocess_point_cloud",
+                "reproject_scan_to_target_crs",
                 args=[
                     params.company_id,
                     params.dataset_version_id,
                     scan_id,
                     params.schema_version,
+                    in_srs,
+                    out_srs,
                 ],
-                kwargs={
-                    "input_kind": params.input_kind,
-                    "output_kind": params.output_kind,
-                    "voxel_size_m": params.voxel_size_m,
-                    "mean_k": params.mean_k,
-                    "multiplier": params.multiplier,
-                },
                 start_to_close_timeout=timedelta(hours=2),
                 retry_policy=rp_fast,
             )
@@ -77,4 +93,6 @@ class PreprocessPipeline:
             "scan_ids": scan_ids,
             "processed": self._processed,
             "results": results,
+            "in_srs": in_srs,
+            "out_srs": out_srs,
         }
