@@ -29,6 +29,11 @@ class IngestWorkflowParams:
     dataset_name: str
     bump_version: bool
     crs_id: Optional[str] = None
+    crs_epsg: Optional[int] = None
+    crs_name: Optional[str] = None
+    crs_zone_degree: int = 0
+    crs_units: str = "m"
+    crs_axis_order: str = "x_east,y_north,z_up"
     schema_version: str = "1.1.0"
     force: bool = False
     artifacts: Optional[List[Dict[str, str]]] = None
@@ -79,20 +84,31 @@ class IngestWorkflow:
         )
 
         # 2. Ensure CRS if provided
-        if params.crs_id:
+        crs_id = params.crs_id
+        if params.crs_epsg is not None and not crs_id:
+            crs_id = f"EPSG:{params.crs_epsg}"
+
+        if params.crs_epsg is not None:
             self._stage = "Ensuring CRS exists"
-            # Note: CRS parameters should be provided via signal or params
-            # For now, we assume CRS already exists or is created separately
-            pass
+            await workflow.execute_activity(
+                "ensure_crs",
+                args=[
+                    crs_id or f"EPSG:{params.crs_epsg}",
+                    params.crs_name or crs_id or f"EPSG:{params.crs_epsg}",
+                    params.crs_zone_degree,
+                    params.crs_epsg,
+                    params.crs_units,
+                    params.crs_axis_order,
+                ],
+                start_to_close_timeout=timedelta(seconds=30),
+                retry_policy=RetryPolicy(maximum_attempts=3),
+            )
 
         # 3. Ensure dataset exists + resolve dataset_id (ULID)
         self._stage = "Ensuring dataset exists"
-        if not params.crs_id:
-            raise ValueError("crs_id is required")
-
         dataset_id = await workflow.execute_activity(
             "ensure_dataset",
-            args=[params.company_id, params.crs_id, params.dataset_name],
+            args=[params.company_id, crs_id, params.dataset_name],
             start_to_close_timeout=timedelta(seconds=30),
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
