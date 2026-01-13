@@ -345,6 +345,7 @@ async def process_ingest_run(
         return {
             "run_id": run_id,
             "manifest_key": derived_manifest_key(prefix, run.schema_version),
+            "manifest_bucket": settings.s3_bucket,
             "status": "DONE",
         }
 
