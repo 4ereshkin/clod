@@ -16,7 +16,7 @@ from lidar_app.app.artifact_service import download_artifact
 async def download_from_s3(
         bucket: str,
         key: str,
-        dst_dir: Path,
+        dst_dir: str,
 ):
     def _run():
         s3 = S3Store(
@@ -32,10 +32,10 @@ async def download_from_s3(
         local_path = download_artifact(s3=s3,
                                        bucket=bucket,
                                        key=key,
-                                       dst_dir=dst_dir)
+                                       dst_dir=dst_path)
         return str(local_path)
 
-    activity.heartbeat({'stage': 'download_from_s3', 'key': key, 'dst_dir': dst_dir})
+    activity.heartbeat({'stage': 'download_from_s3', 'key': key, 'dst_dir': str(dst_dir)})
     return await asyncio.to_thread(_run)
 
 @activity.defn
