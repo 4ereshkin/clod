@@ -25,7 +25,6 @@ class RegistrationSolverWorkflowBase:
     def progress(self) -> dict:
         return {"stage": self._stage}
 
-    @workflow.run
     async def run(self, params: RegistrationSolverParams) -> Dict[str, Any]:
         rp_fast = RetryPolicy(maximum_attempts=3)
         rp_once = RetryPolicy(maximum_attempts=1)
@@ -76,9 +75,13 @@ class RegistrationSolverWorkflowBase:
 
 @workflow.defn(name=f"{VERSION}-registration-solver")
 class RegistrationSolverWorkflow(RegistrationSolverWorkflowBase):
-    pass
+    @workflow.run
+    async def run(self, params: RegistrationSolverParams) -> Dict[str, Any]:
+        return await super().run(params)
 
 
 @workflow.defn(name="MVP-plus-registration-solver")
 class RegistrationSolverWorkflowPlus(RegistrationSolverWorkflowBase):
-    pass
+    @workflow.run
+    async def run(self, params: RegistrationSolverParams) -> Dict[str, Any]:
+        return await super().run(params)
