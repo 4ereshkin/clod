@@ -109,7 +109,7 @@ def _reproject_cloud_with_pdal(local_in: Path, local_out: Path, in_srs: str, out
         raise RuntimeError(f"PDAL reprojection failed: {exc}") from exc
     if not local_out.exists():
         raise RuntimeError(f"PDAL reprojection produced no output: {local_out}")
-    return pipe.metadata() or {}
+    return pipe.metadata or {}
 
 
 @activity.defn

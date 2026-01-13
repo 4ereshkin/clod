@@ -21,7 +21,7 @@ def _run_pdal_pipeline(pipeline: dict) -> dict:
         pipe.execute()
     except Exception as exc:
         raise RuntimeError(f"PDAL pipeline failed: {exc}")
-    return pipe.metadata() or {}
+    return pipe.metadata or {}
 
 
 def _resolve_input_artifact(
