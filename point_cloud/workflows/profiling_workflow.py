@@ -35,11 +35,8 @@ class ProfilingWorkflow:
     async def run(self, params: ProfilingWorkflowParams) -> Dict[str, object]:
         self._stage = 'Downloading file'
 
-        geojson_dst = os.path.join(
-            params.geojson_dst,
-            params.scan_id,
-            f"{params.scan_id}.geojson",
-        )
+        base_dir = params.geojson_dst.rstrip("/\\")
+        geojson_dst = f"{base_dir}/{params.scan_id}/{params.scan_id}.geojson"
 
         files_by_kind: Dict[str, str] = await workflow.execute_child_workflow(
             f"{VERSION}-download",
