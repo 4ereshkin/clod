@@ -26,8 +26,12 @@ from temporalio.worker import Worker
 
 from point_cloud.workflows.registration_solver_workflow import RegistrationSolverWorkflow
 from point_cloud.workflows.prod_reg_workflow import ProdRegistrationWorkflow
+from point_cloud.workflows.preprocess_workflow import PreprocessPipeline
 from point_cloud.activities.registration_icp_activities import refine_edges_with_icp
-from point_cloud.activities.preprocess_activities import preprocess_point_cloud
+from point_cloud.activities.preprocess_activities import (
+    list_scans_by_dataset_version,
+    preprocess_point_cloud,
+)
 from point_cloud.activities.prod_reg_activities import (
     prod_build_registration_anchors,
     prod_collect_registration_graph,
@@ -83,7 +87,13 @@ async def main() -> None:
     worker = Worker(
         client,
         task_queue="point-cloud-task-queue",
-        workflows=[MlsPipelineWorkflow, IngestWorkflow, RegistrationSolverWorkflow, ProdRegistrationWorkflow],
+        workflows=[
+            MlsPipelineWorkflow,
+            IngestWorkflow,
+            RegistrationSolverWorkflow,
+            PreprocessPipeline,
+            ProdRegistrationWorkflow,
+        ],
         activities=[
             # ingest
             ensure_company,
@@ -114,6 +124,7 @@ async def main() -> None:
             refine_edges_with_icp,
             export_merged_laz,
 
+            list_scans_by_dataset_version,
             preprocess_point_cloud,
 
             # prod registration
