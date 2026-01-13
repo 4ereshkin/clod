@@ -17,12 +17,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import sys
 import time
 from pathlib import Path
 
 from temporalio.client import Client
 from temporalio.service import RPCError
+import yaml
 
 # add project root to PYTHONPATH
 script_dir = Path(__file__).resolve().parent
@@ -30,11 +32,19 @@ project_root = script_dir.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from point_cloud.workflows.full_pipeline_workflow import (
-    FullPipelineParams,
-    FullPipelineScan,
-    FullPipelineWorkflow,
-)
+def ensure_workflow_version() -> None:
+    if os.environ.get("WORKFLOW_VERSION"):
+        return
+    config_path = project_root / "scripts" / "config.yaml"
+    if not config_path.exists():
+        raise FileNotFoundError(
+            "WORKFLOW_VERSION is not set and scripts/config.yaml is missing"
+        )
+    data = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    version = (data.get("VERSION_INFO") or {}).get("WORKFLOW_VERSION")
+    if not version:
+        raise ValueError("WORKFLOW_VERSION missing in scripts/config.yaml")
+    os.environ["WORKFLOW_VERSION"] = str(version)
 
 
 def parse_scan_spec(spec: str) -> dict:
@@ -77,7 +87,9 @@ def validate_files(spec: dict[str, str]) -> None:
         raise FileNotFoundError(f"ControlPoint file not found: {spec['cp']}")
 
 
-async def run_full_pipeline(params: FullPipelineParams) -> None:
+async def run_full_pipeline(params: "FullPipelineParams") -> None:
+    from point_cloud.workflows.full_pipeline_workflow import FullPipelineWorkflow
+
     client = await Client.connect("localhost:7233")
     workflow_id = f"full-pipeline-{params.company_id}-{params.dataset_name}-{int(time.time())}"
 
@@ -134,6 +146,12 @@ def main() -> None:
     parser.add_argument("--multiplier", type=float, default=2.0, help="Preprocess outlier multiplier")
 
     args = parser.parse_args()
+    ensure_workflow_version()
+
+    from point_cloud.workflows.full_pipeline_workflow import (
+        FullPipelineParams,
+        FullPipelineScan,
+    )
 
     scan_specs = []
     for spec in args.scan:
