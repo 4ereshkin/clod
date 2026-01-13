@@ -145,6 +145,10 @@ def main() -> None:
     parser.add_argument("--mean-k", type=int, default=20, help="Preprocess outlier mean_k")
     parser.add_argument("--multiplier", type=float, default=2.0, help="Preprocess outlier multiplier")
 
+    if len(sys.argv) == 1:
+        parser.print_help()
+        return
+
     args = parser.parse_args()
     ensure_workflow_version()
 
