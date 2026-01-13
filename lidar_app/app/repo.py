@@ -48,21 +48,21 @@ class Repo:
                 return
             db.add(Company(id=company_id, name=name or company_id))
 
-    def ensure_dataset(self, company_id: str, *, name: str, crs_id: str) -> str:
+    def ensure_dataset(self, company_id: str, *, name: str, crs_id: str | None) -> str:
         with self.session() as db:
             existing = db.execute(
                 select(Dataset).where(Dataset.company_id == company_id, Dataset.name == name)
             ).scalar_one_or_none()
 
             if existing is not None:
-                if existing.crs_id != crs_id:
+                if crs_id is not None and existing.crs_id != crs_id:
                     raise RuntimeError(f"Dataset '{name}' has crs {existing.crs_id}, not {crs_id}")
                 return existing.id
 
             if not db.get(Company, company_id):
                 raise RuntimeError(f"Company {company_id} not found")
 
-            if not db.get(CRS, crs_id):
+            if crs_id is not None and not db.get(CRS, crs_id):
                 raise RuntimeError(f"CRS {crs_id} not found")
 
             dataset_id = str(ULID())
@@ -77,7 +77,7 @@ class Repo:
                 existing = db.execute(
                     select(Dataset).where(Dataset.company_id == company_id, Dataset.name == name)
                 ).scalar_one()
-                if existing.crs_id != crs_id:
+                if crs_id is not None and existing.crs_id != crs_id:
                     raise RuntimeError(f"Dataset '{name}' has crs {existing.crs_id}, not {crs_id}")
                 return existing.id
 

@@ -5,6 +5,7 @@ import json
 import re
 import subprocess
 import tempfile
+import pdal
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, List, Tuple
@@ -18,9 +19,6 @@ from lidar_app.app.repo import Repo
 from lidar_app.app.config import settings
 from lidar_app.app.s3_store import S3Store, S3Ref, derived_manifest_key, scan_prefix
 from lidar_app.app.artifact_service import download_artifact, store_artifact
-
-# Если у тебя reproject.SRS уже работает локально:
-from reproject import SRS
 
 _FLOAT = re.compile(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?")
 
@@ -93,6 +91,24 @@ def _rewrite_xyz_lines(text: str, new_xyz: dict[int, list[float]]) -> str:
     return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
 
 
+def _reproject_cloud_with_pdal(local_in: Path, local_out: Path, in_srs: str, out_srs: str) -> dict:
+    pipeline = {
+        "pipeline": [
+            {"type": "readers.las", "filename": str(local_in)},
+            {"type": "filters.reprojection", "in_srs": in_srs, "out_srs": out_srs},
+            {"type": "writers.las", "filename": str(local_out), "compression": "laszip"},
+        ]
+    }
+    pipe = pdal.Pipeline(json.dumps(pipeline))
+    try:
+        pipe.execute()
+    except Exception as exc:
+        raise RuntimeError(f"PDAL reprojection failed: {exc}") from exc
+    if not local_out.exists():
+        raise RuntimeError(f"PDAL reprojection produced no output: {local_out}")
+    return pipe.metadata() or {}
+
+
 @activity.defn
 async def load_ingest_manifest(company_id: str, dataset_version_id: str, scan_id: str, schema_version: str) -> Dict[str, Any]:
     """
@@ -158,15 +174,8 @@ async def reproject_scan_to_target_crs(
             s3.download_file(S3Ref(cloud.s3_bucket, cloud.s3_key), str(local_in))
 
             # reproject cloud
-            srs = SRS(cloud_path=str(local_in), in_srs=in_srs, out_srs=out_srs)
-
-            out_path = srs.run()  # <- вернёт str
-            if not out_path:
-                raise RuntimeError("SRS.run() returned None")
-
-            local_out = Path(out_path)  # <- ВОТ ОНА, ОПРЕДЕЛЕНА 100%
-            if not local_out.exists():
-                raise RuntimeError(f"Reproject output not found: {local_out}")
+            local_out = td / f"{local_in.stem}__{out_srs.replace(':', '_')}{local_in.suffix}"
+            pdal_meta = _reproject_cloud_with_pdal(local_in, local_out, in_srs, out_srs)
 
             # upload derived cloud
             derived_cloud_key = (
@@ -183,7 +192,7 @@ async def reproject_scan_to_target_crs(
                 key=derived_cloud_key,
                 local_file_path=str(local_out),
                 status="AVAILABLE",
-                meta={"in_srs": in_srs, "out_srs": out_srs},
+                meta={"in_srs": in_srs, "out_srs": out_srs, "pdal_metadata": pdal_meta},
             )
 
             out = {
