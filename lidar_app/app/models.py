@@ -32,12 +32,17 @@ class CRS(Base):
 
 class Dataset(Base):
     __tablename__ = "datasets"
-    __table_args__ = (UniqueConstraint('company_id', 'name', name='uq_datasets_company_name'), {"schema": "core"})
+    __table_args__ = (
+        UniqueConstraint('company_id', 'name', name='uq_datasets_company_name'),
+        Index("ix_datasets_company_id", "company_id"),
+        Index("ix_datasets_crs_id", "crs_id"),
+        {"schema": "core"},
+    )
 
     id = Column(Text, primary_key=True)
-    company_id = Column(Text, nullable=False)
+    company_id = Column(Text, ForeignKey("core.companies.id"), nullable=False)
     name = Column(Text, nullable=False)
-    crs_id = Column(Text, nullable=False)
+    crs_id = Column(Text, ForeignKey("core.crs.id"), nullable=True)
 
 class DatasetVersion(Base):
     __tablename__ = "dataset_versions"
@@ -57,15 +62,20 @@ class DatasetVersion(Base):
 
 class Scan(Base):
     __tablename__ = "scans"
-    __table_args__ = {"schema": "core"}
+    __table_args__ = (
+        Index("ix_scans_company_id", "company_id"),
+        Index("ix_scans_dataset_version_id", "dataset_version_id"),
+        Index("ix_scans_crs_id", "crs_id"),
+        {"schema": "core"},
+    )
 
     id = Column(Text, primary_key=True)
-    company_id = Column(Text, nullable=False)
+    company_id = Column(Text, ForeignKey("core.companies.id"), nullable=False)
 
     dataset_id = Column(Text, ForeignKey('core.datasets.id'), nullable=False)
     dataset_version_id = Column(Text, ForeignKey('core.dataset_versions.id'), nullable=False)
 
-    crs_id = Column(Text, nullable=False)
+    crs_id = Column(Text, ForeignKey("core.crs.id"), nullable=True)
 
     status = Column(Text, nullable=False, default="CREATED")
     schema_version = Column(Text, nullable=False, default="1.1.0")
@@ -79,10 +89,16 @@ class Scan(Base):
 
 class Artifact(Base):
     __tablename__ = "artifacts"
-    __table_args__ = {"schema": "core"}
+    __table_args__ = (
+        Index("ix_artifacts_company_id", "company_id"),
+        Index("ix_artifacts_scan_id", "scan_id"),
+        Index("ix_artifacts_kind", "kind"),
+        Index("ix_artifacts_scan_id_kind", "scan_id", "kind"),
+        {"schema": "core"},
+    )
 
     id = Column(BigInteger, primary_key=True)
-    company_id = Column(Text, nullable=False)
+    company_id = Column(Text, ForeignKey("core.companies.id"), nullable=False)
     scan_id = Column(String,
                      ForeignKey("core.scans.id", ondelete='CASCADE'),
                      nullable=False)
