@@ -88,15 +88,21 @@ class IngestWorkflow:
         if params.crs_epsg is not None and not crs_id:
             crs_id = f"EPSG:{params.crs_epsg}"
 
-        if params.crs_epsg is not None:
+        if crs_id:
+            epsg = params.crs_epsg
+            if epsg is None and crs_id.upper().startswith("EPSG:"):
+                try:
+                    epsg = int(crs_id.split(":", 1)[1])
+                except ValueError:
+                    epsg = None
             self._stage = "Ensuring CRS exists"
             await workflow.execute_activity(
                 "ensure_crs",
                 args=[
-                    crs_id or f"EPSG:{params.crs_epsg}",
-                    params.crs_name or crs_id or f"EPSG:{params.crs_epsg}",
+                    crs_id,
+                    params.crs_name or crs_id,
                     params.crs_zone_degree,
-                    params.crs_epsg,
+                    epsg,
                     params.crs_units,
                     params.crs_axis_order,
                 ],
