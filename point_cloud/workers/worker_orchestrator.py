@@ -27,6 +27,7 @@ from temporalio.worker import Worker
 from point_cloud.workflows.registration_solver_workflow import RegistrationSolverWorkflow
 from point_cloud.workflows.prod_reg_workflow import ProdRegistrationWorkflow
 from point_cloud.workflows.preprocess_workflow import PreprocessPipeline
+from point_cloud.workflows.reproject_workflow import ReprojectWorkflow
 from point_cloud.activities.registration_icp_activities import refine_edges_with_icp
 from point_cloud.activities.preprocess_activities import (
     list_scans_by_dataset_version,
@@ -92,6 +93,7 @@ async def main() -> None:
             IngestWorkflow,
             RegistrationSolverWorkflow,
             PreprocessPipeline,
+            ReprojectWorkflow,
             ProdRegistrationWorkflow,
         ],
         activities=[
