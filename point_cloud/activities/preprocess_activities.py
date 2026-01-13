@@ -62,7 +62,6 @@ async def preprocess_point_cloud(
     dataset_version_id: str,
     scan_id: str,
     schema_version: str,
-    *,
     input_kind: str = "derived.reprojected_point_cloud",
     output_kind: str = "derived.preprocessed_point_cloud",
     voxel_size_m: float = 0.10,
