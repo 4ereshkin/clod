@@ -30,7 +30,10 @@ from point_cloud.workflows.preprocess_workflow import PreprocessPipeline
 from point_cloud.workflows.reproject_workflow import ReprojectWorkflow
 from point_cloud.workflows.download_workflow import DownloadWorkflow
 from point_cloud.workflows.profiling_workflow import ProfilingWorkflow
-from point_cloud.workflows.full_pipeline_workflow import FullPipelineWorkflow
+from point_cloud.workflows.full_pipeline_workflow import (
+    FullPipelineWorkflow,
+    FullPipelineWorkflowLegacy,
+)
 from point_cloud.activities.registration_icp_activities import refine_edges_with_icp
 from point_cloud.activities.preprocess_activities import (
     list_scans_by_dataset_version,
@@ -109,6 +112,7 @@ async def main() -> None:
             DownloadWorkflow,
             ProfilingWorkflow,
             FullPipelineWorkflow,
+            *([FullPipelineWorkflowLegacy] if FullPipelineWorkflowLegacy else []),
         ],
         activities=[
             # ingest
