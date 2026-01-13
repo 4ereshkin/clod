@@ -42,7 +42,7 @@ class Dataset(Base):
     id = Column(Text, primary_key=True)
     company_id = Column(Text, ForeignKey("core.companies.id"), nullable=False)
     name = Column(Text, nullable=False)
-    crs_id = Column(Text, ForeignKey("core.crs.id"), nullable=False)
+    crs_id = Column(Text, ForeignKey("core.crs.id"), nullable=True)
 
 class DatasetVersion(Base):
     __tablename__ = "dataset_versions"
@@ -75,7 +75,7 @@ class Scan(Base):
     dataset_id = Column(Text, ForeignKey('core.datasets.id'), nullable=False)
     dataset_version_id = Column(Text, ForeignKey('core.dataset_versions.id'), nullable=False)
 
-    crs_id = Column(Text, ForeignKey("core.crs.id"), nullable=False)
+    crs_id = Column(Text, ForeignKey("core.crs.id"), nullable=True)
 
     status = Column(Text, nullable=False, default="CREATED")
     schema_version = Column(Text, nullable=False, default="1.1.0")
