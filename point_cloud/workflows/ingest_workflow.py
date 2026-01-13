@@ -46,6 +46,9 @@ class IngestWorkflow:
         self._scan_id: Optional[str] = None
         self._errors: Dict[str, str] = {}
         self._artifacts: List[Dict[str, str]] = []
+        self._upload_results: List[Dict[str, Any]] = []
+        self._manifest_key: Optional[str] = None
+        self._manifest_bucket: Optional[str] = None
 
     @workflow.query
     def progress(self) -> dict:
@@ -54,6 +57,19 @@ class IngestWorkflow:
             'scan_id': self._scan_id,
             'errors': self._errors,
         }
+
+    @workflow.query
+    def ingested_artifacts(self) -> Dict[str, Any]:
+        artifacts = list(self._upload_results)
+        if self._manifest_key and self._manifest_bucket:
+            artifacts.append(
+                {
+                    "kind": "derived.ingest_manifest",
+                    "bucket": self._manifest_bucket,
+                    "key": self._manifest_key,
+                }
+            )
+        return {"artifacts": artifacts}
 
     @workflow.signal
     async def add_raw_artifacts(
@@ -181,6 +197,7 @@ class IngestWorkflow:
         # Проверяем, что point_cloud был загружен
         if not cloud_uploaded:
             raise RuntimeError("raw.point_cloud artifact is required but was not uploaded successfully")
+        self._upload_results = upload_results
 
         # Небольшая задержка для гарантии коммита транзакций БД
         await workflow.sleep(timedelta(seconds=0.5))
@@ -207,6 +224,8 @@ class IngestWorkflow:
             start_to_close_timeout=timedelta(minutes=10),
             retry_policy=RetryPolicy(maximum_attempts=2),
         )
+        self._manifest_key = process_result.get("manifest_key")
+        self._manifest_bucket = process_result.get("manifest_bucket")
 
         self._stage = "Completed"
 
