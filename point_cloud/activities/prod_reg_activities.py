@@ -107,11 +107,16 @@ def _dsreg_prefix(company_id: str, dataset_version_id: str) -> str:
 
 
 def _get_derived_cloud_local(repo: Repo, s3: S3Store, scan_id: str, schema_version: str, td: Path) -> Path:
-    art = repo.find_derived_artifact(scan_id, "derived.preprocessed_point_cloud", schema_version)
+    art = repo.find_derived_artifact(scan_id, "derived.registration_point_cloud", schema_version)
+    if not art:
+        art = repo.find_derived_artifact(scan_id, "derived.preprocessed_point_cloud", schema_version)
     if not art:
         art = repo.find_derived_artifact(scan_id, "derived.reprojected_point_cloud", schema_version)
     if not art:
-        raise RuntimeError(f"No derived cloud found for scan {scan_id} (preprocessed/reprojected missing)")
+        raise RuntimeError(
+            f"No derived cloud found for scan {scan_id} "
+            "(registration/preprocessed/reprojected missing)"
+        )
     local = td / Path(art.s3_key).name
     s3.download_file(S3Ref(art.s3_bucket, art.s3_key), str(local))
     return local
