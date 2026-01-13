@@ -16,6 +16,9 @@ from point_cloud.workflows.registration_solver_workflow import RegistrationSolve
 from point_cloud.workflows.reproject_workflow import ReprojectWorkflowParams
 
 VERSION = os.environ["WORKFLOW_VERSION"]
+LEGACY_VERSION = os.environ.get("WORKFLOW_VERSION_LEGACY")
+if not LEGACY_VERSION and VERSION.startswith("MVP") and VERSION != "MVP":
+    LEGACY_VERSION = "MVP"
 
 
 @dataclass
@@ -40,8 +43,7 @@ class FullPipelineParams:
     preprocessing_multiplier: float = 2.0
 
 
-@workflow.defn(name=f"{VERSION}-full-pipeline")
-class FullPipelineWorkflow:
+class _FullPipelineWorkflowBase:
     def __init__(self) -> None:
         self._stage = "init"
         self._scan_ids: list[str] = []
@@ -55,8 +57,7 @@ class FullPipelineWorkflow:
             "dataset_version_id": self._dataset_version_id,
         }
 
-    @workflow.run
-    async def run(self, params: FullPipelineParams) -> Dict[str, Any]:
+    async def _run_full_pipeline(self, params: FullPipelineParams) -> Dict[str, Any]:
         scans = params.scans or []
         if not scans:
             raise ApplicationError("Full pipeline requires at least one scan with artifacts")
@@ -168,3 +169,19 @@ class FullPipelineWorkflow:
             "preprocess_result": preprocess_result,
             "registration_result": registration_result,
         }
+
+@workflow.defn(name=f"{VERSION}-full-pipeline")
+class FullPipelineWorkflow(_FullPipelineWorkflowBase):
+    @workflow.run
+    async def run(self, params: FullPipelineParams) -> Dict[str, Any]:
+        return await self._run_full_pipeline(params)
+
+
+FullPipelineWorkflowLegacy = None
+if LEGACY_VERSION and LEGACY_VERSION != VERSION:
+
+    @workflow.defn(name=f"{LEGACY_VERSION}-full-pipeline")
+    class FullPipelineWorkflowLegacy(_FullPipelineWorkflowBase):
+        @workflow.run
+        async def run(self, params: FullPipelineParams) -> Dict[str, Any]:
+            return await self._run_full_pipeline(params)
