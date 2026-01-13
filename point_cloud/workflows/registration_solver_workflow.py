@@ -79,9 +79,3 @@ class RegistrationSolverWorkflow(RegistrationSolverWorkflowBase):
     async def run(self, params: RegistrationSolverParams) -> Dict[str, Any]:
         return await super().run(params)
 
-
-@workflow.defn(name="MVP-plus-registration-solver")
-class RegistrationSolverWorkflowPlus(RegistrationSolverWorkflowBase):
-    @workflow.run
-    async def run(self, params: RegistrationSolverParams) -> Dict[str, Any]:
-        return await super().run(params)
