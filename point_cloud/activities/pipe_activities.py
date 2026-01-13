@@ -208,18 +208,12 @@ async def reproject_scan_to_target_crs(
             def _reproject_text_artifact(art, out_key, kind):
                 data = s3.get_bytes(S3Ref(art.s3_bucket, art.s3_key)).decode("utf-8", errors="replace")
                 hits = _parse_xyz_lines(data)
-                if not hits:
-                    # просто копируем как есть
-                    body = data.encode("utf-8")
-                else:
+                body = data.encode("utf-8")
+                meta = {"in_srs": in_srs, "out_srs": out_srs}
+                if hits and in_srs != out_srs:
                     # ВНИМАНИЕ: здесь нужен реальный трансформер координат.
                     # Для MVP: если in_srs==out_srs → оставляем, иначе помечаем.
-                    if in_srs != out_srs:
-                        body = data.encode("utf-8")
-                        meta = {"note": "MVP: aux not transformed", "in_srs": in_srs, "out_srs": out_srs}
-                    else:
-                        meta = {"in_srs": in_srs, "out_srs": out_srs}
-                    # если одинаковые СК — не меняем
+                    meta = {"note": "MVP: aux not transformed", "in_srs": in_srs, "out_srs": out_srs}
                 store_artifact(
                     repo=repo,
                     s3=s3,
@@ -232,7 +226,7 @@ async def reproject_scan_to_target_crs(
                     data=body,
                     content_type="text/plain",
                     status="AVAILABLE",
-                    meta={"in_srs": in_srs, "out_srs": out_srs},
+                    meta=meta,
                 )
 
             if path:
