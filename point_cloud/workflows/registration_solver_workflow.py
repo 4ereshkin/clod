@@ -17,8 +17,7 @@ class RegistrationSolverParams:
     schema_version: str = "1.1.0"
     force: bool = False
 
-@workflow.defn(name=f"{VERSION}-registration-solver")
-class RegistrationSolverWorkflow:
+class RegistrationSolverWorkflowBase:
     def __init__(self) -> None:
         self._stage = "init"
 
@@ -73,3 +72,13 @@ class RegistrationSolverWorkflow:
 
         self._stage = "done"
         return out
+
+
+@workflow.defn(name=f"{VERSION}-registration-solver")
+class RegistrationSolverWorkflow(RegistrationSolverWorkflowBase):
+    pass
+
+
+@workflow.defn(name="MVP-plus-registration-solver")
+class RegistrationSolverWorkflowPlus(RegistrationSolverWorkflowBase):
+    pass

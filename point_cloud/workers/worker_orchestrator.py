@@ -24,7 +24,10 @@ import asyncio
 from temporalio.client import Client
 from temporalio.worker import Worker
 
-from point_cloud.workflows.registration_solver_workflow import RegistrationSolverWorkflow
+from point_cloud.workflows.registration_solver_workflow import (
+    RegistrationSolverWorkflow,
+    RegistrationSolverWorkflowPlus,
+)
 from point_cloud.workflows.prod_reg_workflow import ProdRegistrationWorkflow
 from point_cloud.workflows.preprocess_workflow import PreprocessPipeline
 from point_cloud.workflows.reproject_workflow import ReprojectWorkflow
@@ -106,6 +109,7 @@ async def main() -> None:
             MlsPipelineWorkflow,
             IngestWorkflow,
             RegistrationSolverWorkflow,
+            RegistrationSolverWorkflowPlus,
             PreprocessPipeline,
             ReprojectWorkflow,
             ProdRegistrationWorkflow,
