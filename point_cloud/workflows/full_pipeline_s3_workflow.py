@@ -9,7 +9,6 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 from temporalio.exceptions import ApplicationError
 
-from point_cloud.workflows.ingest_workflow import IngestWorkflowParams
 from point_cloud.workflows.profiling_workflow import ProfilingWorkflowParams
 from point_cloud.workflows.preprocess_workflow import PreprocessPipelineParams
 from point_cloud.workflows.registration_solver_workflow import RegistrationSolverParams
@@ -17,26 +16,25 @@ from point_cloud.workflows.reproject_workflow import ReprojectWorkflowParams
 from point_cloud.workflows.prod_reg_workflow import ProdRegistrationWorkflowParams
 
 VERSION = os.environ["WORKFLOW_VERSION"]
-LEGACY_VERSION = os.environ.get("WORKFLOW_VERSION_LEGACY")
-if not LEGACY_VERSION and VERSION.startswith("MVP") and VERSION != "MVP":
-    LEGACY_VERSION = "MVP"
 
 
 @dataclass
-class FullPipelineScan:
-    artifacts: List[Dict[str, str]]
+class FullPipelineS3Scan:
+    cloud_s3_key: str
+    path_s3_key: str
 
 
 @dataclass
-class FullPipelineParams:
+class FullPipelineS3Params:
     company_id: str
     dataset_name: str
-    dataset_crs_id: str
+    source_srs: str
     target_srs: str
     bump_version: bool = False
     schema_version: str = "1.1.0"
     force: bool = False
-    scans: Optional[List[FullPipelineScan]] = None
+    scans: Optional[List[FullPipelineS3Scan]] = None
+    s3_bucket: Optional[str] = None
     profiling_cloud_dir: str = "point_cloud/tmp/profiling"
     profiling_geojson_dir: str = "point_cloud/tmp/hexbin"
     preprocessing_voxel_size_m: float = 0.10
@@ -45,7 +43,7 @@ class FullPipelineParams:
     use_prod_registration: bool = False
 
 
-class _FullPipelineWorkflowBase:
+class _FullPipelineS3WorkflowBase:
     def __init__(self) -> None:
         self._stage = "init"
         self._scan_ids: list[str] = []
@@ -59,42 +57,113 @@ class _FullPipelineWorkflowBase:
             "dataset_version_id": self._dataset_version_id,
         }
 
-    async def _run_full_pipeline(self, params: FullPipelineParams) -> Dict[str, Any]:
+    async def _run_full_pipeline_s3(self, params: FullPipelineS3Params) -> Dict[str, Any]:
         scans = params.scans or []
         if not scans:
-            raise ApplicationError("Full pipeline requires at least one scan with artifacts")
+            raise ApplicationError("Full pipeline requires at least one scan with S3 keys")
 
-        ingest_results = []
+        rp_fast = RetryPolicy(maximum_attempts=3)
         rp_once = RetryPolicy(maximum_attempts=1)
 
-        for idx, scan in enumerate(scans, start=1):
-            self._stage = f"ingest:{idx}/{len(scans)}"
-            ingest_params = IngestWorkflowParams(
-                company_id=params.company_id,
-                dataset_name=params.dataset_name,
-                bump_version=params.bump_version,
-                crs_id=params.dataset_crs_id,
-                schema_version=params.schema_version,
-                force=params.force,
-                artifacts=scan.artifacts,
+        self._stage = "ensure_company"
+        await workflow.execute_activity(
+            "ensure_company",
+            args=[params.company_id],
+            start_to_close_timeout=timedelta(seconds=30),
+            retry_policy=rp_fast,
+        )
+
+        crs_id = params.source_srs
+        self._stage = "ensure_crs"
+        if crs_id.upper().startswith("EPSG:"):
+            try:
+                epsg = int(crs_id.split(":", 1)[1])
+            except ValueError:
+                epsg = None
+            await workflow.execute_activity(
+                "ensure_crs",
+                args=[crs_id, crs_id, 0, epsg, "m", "x_east,y_north,z_up"],
+                start_to_close_timeout=timedelta(seconds=30),
+                retry_policy=rp_fast,
             )
 
-            ingest_res = await workflow.execute_child_workflow(
-                f"{VERSION}-ingest",
-                ingest_params,
-                task_queue="point-cloud-task-queue",
-                retry_policy=rp_once,
+        self._stage = "ensure_dataset"
+        dataset_id = await workflow.execute_activity(
+            "ensure_dataset",
+            args=[params.company_id, crs_id, params.dataset_name],
+            start_to_close_timeout=timedelta(seconds=30),
+            retry_policy=rp_fast,
+        )
+
+        self._stage = "ensure_dataset_version"
+        dataset_version = await workflow.execute_activity(
+            "ensure_dataset_version",
+            args=[dataset_id, params.bump_version],
+            start_to_close_timeout=timedelta(seconds=30),
+            retry_policy=rp_fast,
+        )
+        self._dataset_version_id = dataset_version["id"]
+
+        ingest_results = []
+        for idx, scan in enumerate(scans, start=1):
+            if not scan.cloud_s3_key or not scan.path_s3_key:
+                raise ApplicationError("Each scan must include cloud and path S3 keys")
+
+            self._stage = f"ingest:{idx}/{len(scans)}"
+            scan_id = await workflow.execute_activity(
+                "create_scan",
+                args=[params.company_id, self._dataset_version_id],
+                start_to_close_timeout=timedelta(seconds=30),
+                retry_policy=rp_fast,
             )
-            ingest_results.append(ingest_res)
-            scan_id = ingest_res["scan_id"]
-            dataset_version_id = ingest_res["dataset_version_id"]
-            if self._dataset_version_id is None:
-                self._dataset_version_id = dataset_version_id
-            elif dataset_version_id != self._dataset_version_id:
-                raise ApplicationError(
-                    "Ingest produced different dataset versions for the same pipeline"
-                )
             self._scan_ids.append(scan_id)
+
+            await workflow.execute_activity(
+                "register_raw_artifact_from_s3",
+                args=[
+                    params.company_id,
+                    self._dataset_version_id,
+                    scan_id,
+                    "raw.point_cloud",
+                    scan.cloud_s3_key,
+                    params.s3_bucket,
+                ],
+                start_to_close_timeout=timedelta(seconds=30),
+                retry_policy=rp_fast,
+            )
+            await workflow.execute_activity(
+                "register_raw_artifact_from_s3",
+                args=[
+                    params.company_id,
+                    self._dataset_version_id,
+                    scan_id,
+                    "raw.trajectory",
+                    scan.path_s3_key,
+                    params.s3_bucket,
+                ],
+                start_to_close_timeout=timedelta(seconds=30),
+                retry_policy=rp_fast,
+            )
+
+            ingest_run_id = await workflow.execute_activity(
+                "create_ingest_run",
+                args=[params.company_id, scan_id, params.schema_version, params.force],
+                start_to_close_timeout=timedelta(seconds=30),
+                retry_policy=rp_fast,
+            )
+            process_result = await workflow.execute_activity(
+                "process_ingest_run",
+                args=[ingest_run_id],
+                start_to_close_timeout=timedelta(minutes=10),
+                retry_policy=rp_fast,
+            )
+            ingest_results.append(
+                {
+                    "scan_id": scan_id,
+                    "ingest_run_id": ingest_run_id,
+                    "process_result": process_result,
+                }
+            )
 
         self._stage = "profiling"
         profiling_results = []
@@ -118,7 +187,7 @@ class _FullPipelineWorkflowBase:
             dataset_version_id=self._dataset_version_id,
             schema_version=params.schema_version,
             scan_ids=self._scan_ids,
-            in_crs_id=params.dataset_crs_id,
+            in_srs=params.source_srs,
             out_srs=params.target_srs,
         )
         reproject_result = await workflow.execute_child_workflow(
@@ -188,19 +257,8 @@ class _FullPipelineWorkflowBase:
         }
 
 
-@workflow.defn(name=f"{VERSION}-full-pipeline")
-class FullPipelineWorkflow(_FullPipelineWorkflowBase):
+@workflow.defn(name=f"{VERSION}-full-pipeline-s3")
+class FullPipelineS3Workflow(_FullPipelineS3WorkflowBase):
     @workflow.run
-    async def run(self, params: FullPipelineParams) -> Dict[str, Any]:
-        return await self._run_full_pipeline(params)
-
-
-FullPipelineWorkflowLegacy = None
-if LEGACY_VERSION and LEGACY_VERSION != VERSION:
-
-    @workflow.defn(name=f"{LEGACY_VERSION}-full-pipeline")
-    class FullPipelineWorkflowLegacy(_FullPipelineWorkflowBase):
-        @workflow.run
-        async def run(self, params: FullPipelineParams) -> Dict[str, Any]:
-            return await self._run_full_pipeline(params)
-
+    async def run(self, params: FullPipelineS3Params) -> Dict[str, Any]:
+        return await self._run_full_pipeline_s3(params)
