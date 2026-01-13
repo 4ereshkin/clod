@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any, Dict, List
+import os
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
@@ -17,6 +18,7 @@ from point_cloud.activities.prod_reg_activities import (
     prod_solve_pose_graph,
 )
 
+VERSION = os.environ["WORKFLOW_VERSION"]
 
 @dataclass
 class ProdRegistrationWorkflowParams:
@@ -32,7 +34,7 @@ class ProdRegistrationWorkflowParams:
     force: bool = False
 
 
-@workflow.defn(name="prod-registration")
+@workflow.defn(name=f"{VERSION}-registration")
 class ProdRegistrationWorkflow:
     def __init__(self) -> None:
         self._stage = "init"
