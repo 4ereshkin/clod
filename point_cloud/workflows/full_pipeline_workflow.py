@@ -14,6 +14,7 @@ from point_cloud.workflows.profiling_workflow import ProfilingWorkflowParams
 from point_cloud.workflows.preprocess_workflow import PreprocessPipelineParams
 from point_cloud.workflows.registration_solver_workflow import RegistrationSolverParams
 from point_cloud.workflows.reproject_workflow import ReprojectWorkflowParams
+from point_cloud.workflows.prod_reg_workflow import ProdRegistrationWorkflowParams
 
 VERSION = os.environ["WORKFLOW_VERSION"]
 LEGACY_VERSION = os.environ.get("WORKFLOW_VERSION_LEGACY")
@@ -41,6 +42,7 @@ class FullPipelineParams:
     preprocessing_voxel_size_m: float = 0.10
     preprocessing_mean_k: int = 20
     preprocessing_multiplier: float = 2.0
+    use_prod_registration: bool = False
 
 
 class _FullPipelineWorkflowBase:
@@ -145,19 +147,34 @@ class _FullPipelineWorkflowBase:
             retry_policy=rp_once,
         )
 
-        self._stage = "registration"
-        registration_params = RegistrationSolverParams(
-            company_id=params.company_id,
-            dataset_version_id=self._dataset_version_id,
-            schema_version=params.schema_version,
-            force=params.force,
-        )
-        registration_result = await workflow.execute_child_workflow(
-            f"{VERSION}-registration-solver",
-            registration_params,
-            task_queue="point-cloud-task-queue",
-            retry_policy=rp_once,
-        )
+        if params.use_prod_registration:
+            self._stage = "prod-registration"
+            registration_params = ProdRegistrationWorkflowParams(
+                company_id=params.company_id,
+                dataset_version_id=self._dataset_version_id,
+                schema_version=params.schema_version,
+                force=params.force,
+            )
+            registration_result = await workflow.execute_child_workflow(
+                f"{VERSION}-registration",
+                registration_params,
+                task_queue="point-cloud-task-queue",
+                retry_policy=rp_once,
+            )
+        else:
+            self._stage = "registration"
+            registration_params = RegistrationSolverParams(
+                company_id=params.company_id,
+                dataset_version_id=self._dataset_version_id,
+                schema_version=params.schema_version,
+                force=params.force,
+            )
+            registration_result = await workflow.execute_child_workflow(
+                f"{VERSION}-registration-solver",
+                registration_params,
+                task_queue="point-cloud-task-queue",
+                retry_policy=rp_once,
+            )
 
         self._stage = "done"
         return {

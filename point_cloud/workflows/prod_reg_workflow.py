@@ -18,6 +18,7 @@ with workflow.unsafe.imports_passed_through():
         prod_register_pair,
         prod_solve_pose_graph,
     )
+    from point_cloud.activities.export_activities import export_merged_laz
 
 VERSION = os.environ["WORKFLOW_VERSION"]
 
@@ -134,9 +135,18 @@ class ProdRegistrationWorkflow:
             retry_policy=rp_fast,
         )
 
+        self._stage = "export_laz"
+        merged = await workflow.execute_activity(
+            export_merged_laz,
+            args=[params.company_id, params.dataset_version_id, params.schema_version],
+            start_to_close_timeout=timedelta(minutes=30),
+            retry_policy=rp_once,
+        )
+
         self._stage = "done"
         return {
             "pairs_total": len(edges),
             "pairs_accepted": len(refined_edges),
             "solution": persist,
+            "merged_laz": merged,
         }
