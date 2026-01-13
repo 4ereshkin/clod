@@ -29,8 +29,5 @@ class PreprocessPipeline:
     @workflow.run
     async def run(self, params: PreprocessPipelineParams) -> Dict[str, Any]:
 
-        self._stage = 'shift_cloud'
-        shift = await workflow.execute_activity(
-            'shift_pointcloud',
-            args=[params.company_id, params.dataset_version_id, params.schema_version],
-        )
+        self._stage = 'Voxelization of point cloud'
+
