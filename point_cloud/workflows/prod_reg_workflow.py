@@ -8,15 +8,16 @@ import os
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-from point_cloud.activities.prod_reg_activities import (
-    ProdRegistrationPairParams,
-    prod_build_registration_anchors,
-    prod_collect_registration_graph,
-    prod_persist_pose_graph_solution,
-    prod_propose_registration_edges,
-    prod_register_pair,
-    prod_solve_pose_graph,
-)
+with workflow.unsafe.imports_passed_through():
+    from point_cloud.activities.prod_reg_activities import (
+        ProdRegistrationPairParams,
+        prod_build_registration_anchors,
+        prod_collect_registration_graph,
+        prod_persist_pose_graph_solution,
+        prod_propose_registration_edges,
+        prod_register_pair,
+        prod_solve_pose_graph,
+    )
 
 VERSION = os.environ["WORKFLOW_VERSION"]
 
