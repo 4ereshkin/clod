@@ -8,7 +8,7 @@ import os
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-VERSION = 'MVP'
+VERSION = 'MVP-plus'
 
 @dataclass
 class RegistrationSolverParams:
