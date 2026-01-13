@@ -3,6 +3,8 @@ r"""
 Полный end-to-end воркфлоу: ingest N сканов -> profiling -> reproject -> preprocess
 -> registration -> export.
 
+Можно включить prod-registration через флаг --use-prod-registration.
+
 Пример:
     python scripts/run_full_pipeline.py \
         --company demo \
@@ -144,6 +146,11 @@ def main() -> None:
     parser.add_argument("--voxel-size", type=float, default=0.10, help="Preprocess voxel size (meters)")
     parser.add_argument("--mean-k", type=int, default=20, help="Preprocess outlier mean_k")
     parser.add_argument("--multiplier", type=float, default=2.0, help="Preprocess outlier multiplier")
+    parser.add_argument(
+        "--use-prod-registration",
+        action="store_true",
+        help="Use prod registration workflow instead of registration-solver",
+    )
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -179,6 +186,7 @@ def main() -> None:
         preprocessing_voxel_size_m=args.voxel_size,
         preprocessing_mean_k=args.mean_k,
         preprocessing_multiplier=args.multiplier,
+        use_prod_registration=args.use_prod_registration,
     )
 
     asyncio.run(run_full_pipeline(params))
