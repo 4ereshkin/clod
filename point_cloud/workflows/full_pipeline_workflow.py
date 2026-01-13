@@ -170,14 +170,11 @@ class _FullPipelineWorkflowBase:
             "registration_result": registration_result,
         }
 
+@workflow.defn(name=f"{VERSION}-full-pipeline")
+class FullPipelineWorkflow(_FullPipelineWorkflowBase):
     @workflow.run
     async def run(self, params: FullPipelineParams) -> Dict[str, Any]:
         return await self._run_full_pipeline(params)
-
-
-@workflow.defn(name=f"{VERSION}-full-pipeline")
-class FullPipelineWorkflow(_FullPipelineWorkflowBase):
-    pass
 
 
 FullPipelineWorkflowLegacy = None
@@ -185,4 +182,6 @@ if LEGACY_VERSION and LEGACY_VERSION != VERSION:
 
     @workflow.defn(name=f"{LEGACY_VERSION}-full-pipeline")
     class FullPipelineWorkflowLegacy(_FullPipelineWorkflowBase):
-        pass
+        @workflow.run
+        async def run(self, params: FullPipelineParams) -> Dict[str, Any]:
+            return await self._run_full_pipeline(params)
