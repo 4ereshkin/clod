@@ -28,6 +28,9 @@ from point_cloud.workflows.registration_solver_workflow import RegistrationSolve
 from point_cloud.workflows.prod_reg_workflow import ProdRegistrationWorkflow
 from point_cloud.workflows.preprocess_workflow import PreprocessPipeline
 from point_cloud.workflows.reproject_workflow import ReprojectWorkflow
+from point_cloud.workflows.download_workflow import DownloadWorkflow
+from point_cloud.workflows.profiling_workflow import ProfilingWorkflow
+from point_cloud.workflows.full_pipeline_workflow import FullPipelineWorkflow
 from point_cloud.activities.registration_icp_activities import refine_edges_with_icp
 from point_cloud.activities.preprocess_activities import (
     list_scans_by_dataset_version,
@@ -62,6 +65,14 @@ from point_cloud.activities.pipe_activities import (
 )
 from point_cloud.workflows.mls_new import MlsPipelineWorkflow
 from point_cloud.workflows.ingest_workflow import IngestWorkflow
+from point_cloud.activities.download_activities import download_from_s3
+from point_cloud.activities.profiling_activities import (
+    point_cloud_meta,
+    read_cloud_hexbin,
+    extract_hexbin_fields,
+    upload_hexbin,
+    upload_profiling_manifest,
+)
 from point_cloud.activities import (
     create_scan,
     ensure_company,
@@ -95,6 +106,9 @@ async def main() -> None:
             PreprocessPipeline,
             ReprojectWorkflow,
             ProdRegistrationWorkflow,
+            DownloadWorkflow,
+            ProfilingWorkflow,
+            FullPipelineWorkflow,
         ],
         activities=[
             # ingest
@@ -108,6 +122,7 @@ async def main() -> None:
             process_ingest_run,
             get_scan,
             list_raw_artifacts,
+            download_from_s3,
 
             # pipeline / registration prep
             load_ingest_manifest,
@@ -136,6 +151,13 @@ async def main() -> None:
             prod_collect_registration_graph,
             prod_solve_pose_graph,
             prod_persist_pose_graph_solution,
+
+            # profiling
+            point_cloud_meta,
+            read_cloud_hexbin,
+            extract_hexbin_fields,
+            upload_hexbin,
+            upload_profiling_manifest,
         ],
     )
 
