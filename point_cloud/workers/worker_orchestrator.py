@@ -36,6 +36,7 @@ from point_cloud.workflows.full_pipeline_workflow import (
     FullPipelineWorkflow,
     FullPipelineWorkflowLegacy,
 )
+from point_cloud.workflows.cluster_workflow import ClusterPipeline
 from point_cloud.activities.registration_icp_activities import refine_edges_with_icp
 from point_cloud.activities.preprocess_activities import (
     list_scans_by_dataset_version,
@@ -90,6 +91,14 @@ from point_cloud.activities import (
     get_scan,
     list_raw_artifacts,
 )
+from point_cloud.activities.cluster_activities import (
+    extract_scale_offset,
+    split_into_tiles,
+    split_ground_offground,
+    cluster_tile,
+    crop_buffer,
+    merge_tiles,
+)
 
 
 async def main() -> None:
@@ -113,6 +122,7 @@ async def main() -> None:
             ProdRegistrationWorkflow,
             DownloadWorkflow,
             ProfilingWorkflow,
+            ClusterPipeline,
             FullPipelineWorkflow,
             *([FullPipelineWorkflowLegacy] if FullPipelineWorkflowLegacy else []),
         ],
@@ -164,6 +174,14 @@ async def main() -> None:
             extract_hexbin_fields,
             upload_hexbin,
             upload_profiling_manifest,
+
+            # cluster
+            extract_scale_offset,
+            split_into_tiles,
+            split_ground_offground,
+            cluster_tile,
+            crop_buffer,
+            merge_tiles,
         ],
     )
 
