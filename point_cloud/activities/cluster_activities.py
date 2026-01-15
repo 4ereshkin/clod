@@ -334,12 +334,12 @@ async def split_ground_offground(
         ground_unclassified.parent.mkdir(parents=True, exist_ok=True)
         ground_classified.parent.mkdir(parents=True, exist_ok=True)
 
-        csf_params = csf_params or {}
+        local_csf_params = csf_params or {}
         pipeline_json = [
             {"type": "readers.las", "filename": tile_path},
             {
                 "type": "filters.csf",
-                **csf_params,
+                **local_csf_params,
             },
             {
                 "type": "filters.range",
@@ -362,7 +362,7 @@ async def split_ground_offground(
             {"type": "readers.las", "filename": tile_path},
             {
                 "type": "filters.csf",
-                **csf_params,
+                **local_csf_params,
             },
             {
                 "type": "filters.range",
