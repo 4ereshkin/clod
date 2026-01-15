@@ -518,6 +518,33 @@ class Repo:
             for (scan_id, pose, quality, meta) in rows
         ]
 
+    def find_dataset_version_artifact(
+            self,
+            dataset_version_id: str,
+            kind: str,
+            schema_version: str,
+    ) -> Artifact | None:
+        with self.session() as db:
+            artifact = (
+                db.execute(
+                    select(Artifact)
+                    .join(Scan, Artifact.scan_id == Scan.id)
+                    .where(
+                        Scan.dataset_version_id == dataset_version_id,
+                        Artifact.kind == kind,
+                        Artifact.schema_version == schema_version,
+                        Artifact.meta["scope"].astext == "dataset_version",
+                    )
+                    .order_by(Artifact.created_at.desc())
+                    .limit(1)
+                )
+                .scalars()
+                .first()
+            )
+            if artifact:
+                db.expunge(artifact)
+            return artifact
+
     def upsert_derived_artifact(
             self,
             *,
