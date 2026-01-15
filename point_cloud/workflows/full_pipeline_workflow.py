@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Any, Dict, List, Optional
 
@@ -9,6 +9,7 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 from temporalio.exceptions import ApplicationError
 
+from point_cloud.workflows.cluster_workflow import ClusterHeuristicsParams, ClusterPipelineParams
 from point_cloud.workflows.ingest_workflow import IngestWorkflowParams
 from point_cloud.workflows.profiling_workflow import ProfilingWorkflowParams
 from point_cloud.workflows.preprocess_workflow import PreprocessPipelineParams
@@ -43,6 +44,12 @@ class FullPipelineParams:
     preprocessing_mean_k: int = 20
     preprocessing_multiplier: float = 2.0
     use_prod_registration: bool = False
+    run_clustering: bool = False
+    cluster_dst_dir: str = "point_cloud/tmp/cluster"
+    cluster_tile_size: float = 50.0
+    cluster_splitter_buffer: float = 3.0
+    cluster_csf_params: Dict[str, Any] = field(default_factory=dict)
+    cluster_params: ClusterHeuristicsParams = field(default_factory=ClusterHeuristicsParams)
 
 
 class _FullPipelineWorkflowBase:
@@ -176,6 +183,25 @@ class _FullPipelineWorkflowBase:
                 retry_policy=rp_once,
             )
 
+        cluster_result = None
+        if params.run_clustering:
+            self._stage = "cluster"
+            cluster_params = ClusterPipelineParams(
+                dataset_version_id=self._dataset_version_id,
+                schema_version=params.schema_version,
+                dst_dir=params.cluster_dst_dir,
+                tile_size=params.cluster_tile_size,
+                splitter_buffer=params.cluster_splitter_buffer,
+                csf_params=params.cluster_csf_params,
+                cluster_params=params.cluster_params,
+            )
+            cluster_result = await workflow.execute_child_workflow(
+                f"{VERSION}_cluster",
+                cluster_params,
+                task_queue="point-cloud-task-queue",
+                retry_policy=rp_once,
+            )
+
         self._stage = "done"
         return {
             "scan_ids": self._scan_ids,
@@ -185,6 +211,7 @@ class _FullPipelineWorkflowBase:
             "reproject_result": reproject_result,
             "preprocess_result": preprocess_result,
             "registration_result": registration_result,
+            "cluster_result": cluster_result,
         }
 
 
@@ -203,4 +230,3 @@ if LEGACY_VERSION and LEGACY_VERSION != VERSION:
         @workflow.run
         async def run(self, params: FullPipelineParams) -> Dict[str, Any]:
             return await self._run_full_pipeline(params)
-

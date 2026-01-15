@@ -151,6 +151,11 @@ def main() -> None:
         action="store_true",
         help="Use prod registration workflow instead of registration-solver",
     )
+    parser.add_argument(
+        "--run-clustering",
+        action="store_true",
+        help="Run clustering workflow after registration",
+    )
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -187,6 +192,7 @@ def main() -> None:
         preprocessing_mean_k=args.mean_k,
         preprocessing_multiplier=args.multiplier,
         use_prod_registration=args.use_prod_registration,
+        run_clustering=args.run_clustering,
     )
 
     asyncio.run(run_full_pipeline(params))
