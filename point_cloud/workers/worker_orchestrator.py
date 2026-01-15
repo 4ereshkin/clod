@@ -89,10 +89,11 @@ from point_cloud.activities import (
     create_ingest_run,
     process_ingest_run,
     get_scan,
-    list_raw_artifacts,
+    list_raw_artifacts
 )
 from point_cloud.activities.cluster_activities import (
     extract_scale_offset,
+    download_dataset_version_artifact,
     split_into_tiles,
     split_ground_offground,
     cluster_tile,
@@ -182,6 +183,7 @@ async def main() -> None:
             cluster_tile,
             crop_buffer,
             merge_tiles,
+            download_dataset_version_artifact
         ],
     )
 

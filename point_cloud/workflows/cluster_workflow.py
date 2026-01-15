@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import timedelta
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 import os
 
 from temporalio import workflow
 
-VERSION = os.environ["WORKFLOW_VERSION"]
-SCHEMA_VERSION = os.environ['SCHEMA_VERSION']
+VERSION = os.environ["WORKFLOW_VERSION"] = 'MVP-plus'
+SCHEMA_VERSION = '1.1.0'
+# SCHEMA_VERSION = os.environ['SCHEMA_VERSION']
 
 
 @dataclass
@@ -64,12 +66,14 @@ class ClusterPipeline:
                 params.schema_version,
                 str(raw_dir),
             ],
+            start_to_close_timeout=timedelta(minutes=30)
         )
 
         self._stage = "Extract scale/offset"
         meta = await workflow.execute_activity(
             "extract_scale_offset",
             args=[merged_cloud["local_path"]],
+            start_to_close_timeout=timedelta(minutes=30)
         )
 
         self._stage = "Split into tiles"
@@ -81,6 +85,7 @@ class ClusterPipeline:
                 params.tile_size,
                 params.splitter_buffer,
             ],
+            start_to_close_timeout=timedelta(minutes=30)
         )
 
         self._stage = "Process tiles"
@@ -94,6 +99,7 @@ class ClusterPipeline:
             ground_split = await workflow.execute_activity(
                 "split_ground_offground",
                 args=[tile, str(ground_dir), params.csf_params],
+                start_to_close_timeout=timedelta(minutes=30)
             )
 
             classified_inputs = [
@@ -110,6 +116,7 @@ class ClusterPipeline:
                         classified_output,
                         params.cluster_params.__dict__,
                     ],
+                    start_to_close_timeout=timedelta(minutes=30)
                 )
                 classified_outputs.append(cluster_result["classified_file"])
 
@@ -122,6 +129,7 @@ class ClusterPipeline:
                     meta["scale"],
                     meta["offset"],
                 ],
+                start_to_close_timeout=timedelta(minutes=30)
             )
 
             crop_output = tile_root / "cropped" / f"tile_{tile_id}.laz"
@@ -134,6 +142,7 @@ class ClusterPipeline:
                     meta["scale"],
                     meta["offset"],
                 ],
+                start_to_close_timeout=timedelta(minutes=30)
             )
             cropped_tiles.append(crop_result["cropped_tile"])
 
@@ -148,6 +157,7 @@ class ClusterPipeline:
                 meta["scale"],
                 meta["offset"],
             ],
+            start_to_close_timeout=timedelta(minutes=30)
         )
 
         self._stage = "Done"
