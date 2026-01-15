@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import json
-import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, List
 
+import pdal
 from temporalio import activity
 
 from lidar_app.app.repo import Repo
@@ -33,19 +33,15 @@ def _pose_to_pdal_matrix(pose: dict) -> str:
 
 
 def _run_pdal_pipeline(pipeline: dict) -> None:
-    p = subprocess.run(
-        ["pdal", "pipeline", "--stdin"],
-        input=json.dumps(pipeline),
-        text=True,
-        capture_output=True,
-    )
-    if p.returncode != 0:
+    pipe = pdal.Pipeline(json.dumps(pipeline))
+    try:
+        pipe.execute()
+    except Exception as exc:
         raise RuntimeError(
             "pdal pipeline failed\n"
-            f"stdout:\n{p.stdout}\n"
-            f"stderr:\n{p.stderr}\n"
+            f"error: {exc}\n"
             f"pipeline:\n{json.dumps(pipeline, indent=2)}\n"
-        )
+        ) from exc
 
 
 @activity.defn

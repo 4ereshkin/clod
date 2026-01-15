@@ -98,6 +98,7 @@ async def preprocess_point_cloud(
             pipeline = {
                 "pipeline": [
                     {"type": "readers.las", "filename": str(local_in)},
+                    {"type": "filters.elm"},
                     {
                         "type": "filters.outlier",
                         "method": "statistical",
@@ -124,6 +125,7 @@ async def preprocess_point_cloud(
                 "engine": "pdal",
                 "input_kind": input_kind,
                 "output_kind": output_kind,
+                "elm": True,
                 "voxel_size_m": float(voxel_size_m),
                 "outlier": {
                     "method": "statistical",
