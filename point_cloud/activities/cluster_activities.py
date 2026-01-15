@@ -405,6 +405,11 @@ async def cluster_tile(
     def _run() -> Dict[str, str]:
         heuristics = ClusterHeuristicsParams(**(params or {}))
         las = laspy.read(input_file)
+        if len(las.points) == 0:
+            output_path = Path(output_file)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            las.write(str(output_path))
+            return {"classified_file": str(output_path)}
 
         points_full = np.vstack((las.x, las.y, las.z)).T.astype(np.float64)
         pcd_full = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points_full))

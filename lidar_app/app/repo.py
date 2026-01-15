@@ -533,7 +533,7 @@ class Repo:
                         Scan.dataset_version_id == dataset_version_id,
                         Artifact.kind == kind,
                         Artifact.schema_version == schema_version,
-                        Artifact.meta["scope"].astext == "dataset_version",
+                        Artifact.meta["scope"].as_string() == "dataset_version",
                     )
                     .order_by(Artifact.created_at.desc())
                     .limit(1)
