@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-import subprocess
 import tempfile
 import pdal
 from dataclasses import dataclass
@@ -482,56 +481,43 @@ def _try_pdal_icp(src_path: Path, tgt_path: Path, max_corr: float) -> Optional[D
     """
     # pipeline должен вернуть metadata с матрицей.
     # Разные версии PDAL кладут её в разные поля, поэтому ищем несколько вариантов.
-    pipe = {
+    pipeline = {
         "pipeline": [
-            str(src_path),
             {"type": "readers.las", "filename": str(src_path)},
-            {"type": "filters.icp",
-             "reference": str(tgt_path),
-             "maxCorrespondenceDistance": float(max_corr)},
-            {"type": "filters.info"}
+            {
+                "type": "filters.icp",
+                "reference": str(tgt_path),
+                "maxCorrespondenceDistance": float(max_corr),
+            },
+            {"type": "filters.info"},
         ]
     }
 
-    with tempfile.TemporaryDirectory() as td:
-        td = Path(td)
-        jpath = td / "icp.json"
-        jpath.write_text(json.dumps(pipe), encoding="utf-8")
+    try:
+        pipe = pdal.Pipeline(json.dumps(pipeline))
+        pipe.execute()
+    except Exception:
+        return None
 
-        try:
-            p = subprocess.run(
-                ["pdal", "pipeline", str(jpath), "--metadata", str(td / "meta.json")],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        except subprocess.CalledProcessError:
-            return None
+    meta = pipe.metadata or {}
+    # Попытки вытащить 4x4
+    # варианты: meta["metadata"]["filters.icp"]["transform"] или ["transformation"]
+    try:
+        icp_meta = meta.get("metadata", {}).get("filters.icp", {})
+    except Exception:
+        icp_meta = {}
 
-        meta_path = td / "meta.json"
-        if not meta_path.exists():
-            return None
+    T = (
+        icp_meta.get("transform")
+        or icp_meta.get("transformation")
+        or icp_meta.get("matrix")
+    )
+    if not (isinstance(T, list) and len(T) == 4):
+        return None
 
-        meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        # Попытки вытащить 4x4
-        # варианты: meta["metadata"]["filters.icp"]["transform"] или ["transformation"]
-        icp_meta = None
-        try:
-            icp_meta = meta.get("metadata", {}).get("filters.icp", {})
-        except Exception:
-            icp_meta = {}
-
-        T = (
-            icp_meta.get("transform")
-            or icp_meta.get("transformation")
-            or icp_meta.get("matrix")
-        )
-        if not (isinstance(T, list) and len(T) == 4):
-            return None
-
-        rmse = float(icp_meta.get("rmse", icp_meta.get("error", 0.0)) or 0.0)
-        fitness = float(icp_meta.get("fitness", icp_meta.get("overlap", 0.0)) or 0.0)
-        return {"T": T, "rmse": rmse, "fitness": fitness, "method": "pdal_icp"}
+    rmse = float(icp_meta.get("rmse", icp_meta.get("error", 0.0)) or 0.0)
+    fitness = float(icp_meta.get("fitness", icp_meta.get("overlap", 0.0)) or 0.0)
+    return {"T": T, "rmse": rmse, "fitness": fitness, "method": "pdal_icp"}
 
 
 @activity.defn
