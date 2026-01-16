@@ -114,6 +114,8 @@ async def run_full_pipeline(params: "FullPipelineParams") -> None:
     print(f"- dataset_version_id: {result.get('dataset_version_id')}")
     print(f"- scans: {len(result.get('scan_ids', []))}")
     print(f"- registration_result: {result.get('registration_result')}")
+    if result.get("clustering_result") is not None:
+        print(f"- clustering_result: {result.get('clustering_result')}")
 
 
 def main() -> None:
@@ -191,7 +193,8 @@ def main() -> None:
         preprocessing_voxel_size_m=args.voxel_size,
         preprocessing_mean_k=args.mean_k,
         preprocessing_multiplier=args.multiplier,
-        use_prod_registration=args.use_prod_registration
+        use_prod_registration=args.use_prod_registration,
+        run_clustering=args.run_clustering,
     )
 
     asyncio.run(run_full_pipeline(params))
