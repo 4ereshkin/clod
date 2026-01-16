@@ -15,6 +15,7 @@ from point_cloud.workflows.preprocess_workflow import PreprocessPipelineParams
 from point_cloud.workflows.registration_solver_workflow import RegistrationSolverParams
 from point_cloud.workflows.reproject_workflow import ReprojectWorkflowParams
 from point_cloud.workflows.prod_reg_workflow import ProdRegistrationWorkflowParams
+from point_cloud.workflows.cluster_workflow import ClusterPipelineParams
 
 VERSION = os.environ["WORKFLOW_VERSION"]
 LEGACY_VERSION = os.environ.get("WORKFLOW_VERSION_LEGACY")
@@ -43,6 +44,7 @@ class FullPipelineParams:
     preprocessing_mean_k: int = 20
     preprocessing_multiplier: float = 2.0
     use_prod_registration: bool = False
+    run_clustering: bool = False
 
 
 class _FullPipelineWorkflowBase:
@@ -176,6 +178,20 @@ class _FullPipelineWorkflowBase:
                 retry_policy=rp_once,
             )
 
+        clustering_result = None
+        if params.run_clustering:
+            self._stage = "clustering"
+            clustering_params = ClusterPipelineParams(
+                dataset_version_id=self._dataset_version_id,
+                schema_version=params.schema_version,
+            )
+            clustering_result = await workflow.execute_child_workflow(
+                f"{VERSION}_cluster",
+                clustering_params,
+                task_queue="point-cloud-task-queue",
+                retry_policy=rp_once,
+            )
+
         self._stage = "done"
         return {
             "scan_ids": self._scan_ids,
@@ -185,6 +201,7 @@ class _FullPipelineWorkflowBase:
             "reproject_result": reproject_result,
             "preprocess_result": preprocess_result,
             "registration_result": registration_result,
+            "clustering_result": clustering_result,
         }
 
 
