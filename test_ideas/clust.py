@@ -10,7 +10,7 @@ async def main():
     client = await Client.connect("localhost:7233")
 
     params = ClusterPipelineParams(
-        dataset_version_id="01KF1G0T7KW7MZPR0RY6K579W3"
+        dataset_version_id="01KEV27VT9M2ND5GAQC5587ERD"
     )
 
     handle = await client.start_workflow(

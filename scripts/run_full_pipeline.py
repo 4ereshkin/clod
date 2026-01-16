@@ -191,8 +191,7 @@ def main() -> None:
         preprocessing_voxel_size_m=args.voxel_size,
         preprocessing_mean_k=args.mean_k,
         preprocessing_multiplier=args.multiplier,
-        use_prod_registration=args.use_prod_registration,
-        run_clustering=args.run_clustering,
+        use_prod_registration=args.use_prod_registration
     )
 
     asyncio.run(run_full_pipeline(params))
