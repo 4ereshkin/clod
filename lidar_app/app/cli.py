@@ -1,12 +1,9 @@
 # app/cli.py
 import argparse
-import json
-import time
 from pathlib import Path
 
-from lidar_app.app.ingest import build_ingest_manifest
 from lidar_app.app.repo import Repo
-from lidar_app.app.s3_store import S3Store, scan_prefix, derived_manifest_key
+from lidar_app.app.s3_store import S3Store
 from lidar_app.app.artifact_service import store_artifact
 from lidar_app.app.config import settings
 
@@ -55,13 +52,6 @@ def main():
     ing.add_argument("--scan", required=True)
     ing.add_argument("--schema-version", default='1.1.0')
     ing.add_argument("--force", action='store_true')
-
-    wk = sub.add_parser('ingest-worker')
-    wk.add_argument('--schema-version', default='1.1.0')
-    wk.add_argument('--company', required=False),
-    wk.add_argument('--limit', type=int, default=5),
-    wk.add_argument('--poll_seconds', type=float, default=2.0),
-    wk.add_argument('--once', action='store_true')
 
     args = p.parse_args()
 
@@ -186,72 +176,6 @@ def main():
         )
         print("OK ingest_run queued:", run_id)
         return
-
-    if args.cmd == "ingest-worker":
-        s3 = S3Store(settings.s3_endpoint, settings.s3_access_key, settings.s3_secret_key, settings.s3_region)
-
-        while True:
-            queued = repo.list_queued_ingest_runs(
-                schema_version=args.schema_version,
-                company_id=args.company,
-                limit=args.limit,
-            )
-
-            if not queued:
-                if args.once:
-                    print("NO queued ingest_runs")
-                    return
-                time.sleep(args.poll_seconds)
-                continue
-
-            for run in queued:
-                run_id = int(run.id)
-
-                if not repo.claim_ingest_run(run_id):
-                    continue  # другой воркер успел
-
-                try:
-                    # reload fresh state (optional but nice)
-                    run = repo.get_ingest_run(run_id)
-
-                    scan = repo.get_scan(run.scan_id)
-                    raw_arts = repo.list_raw_artifacts(run.scan_id)
-
-                    # build + upload manifest
-                    prefix = scan_prefix(scan.company_id, scan.dataset_version_id, scan.id)
-                    manifest = build_ingest_manifest(run=run, scan=scan, raw_arts=raw_arts)
-                    body = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
-
-                    store_artifact(
-                        repo=repo,
-                        s3=s3,
-                        company_id=run.company_id,
-                        scan_id=run.scan_id,
-                        kind="derived.ingest_manifest",
-                        schema_version=run.schema_version,
-                        bucket=settings.s3_bucket,
-                        key=derived_manifest_key(prefix, run.schema_version),
-                        data=body,
-                        content_type="application/json",
-                        status="AVAILABLE",
-                        meta={"format": "json"},
-                    )
-
-                    repo.set_ingest_run_status(run_id=run_id, status="DONE", set_finished_at=True)
-                    print("DONE ingest_run:", run_id, "manifest:", derived_manifest_key(prefix, run.schema_version))
-
-                except Exception as e:
-                    repo.set_ingest_run_status(
-                        run_id=run_id,
-                        status="ERROR",
-                        error={"message": str(e), "type": type(e).__name__},
-                        set_finished_at=True,
-                    )
-                    print("ERROR ingest_run:", run_id, "-", type(e).__name__, str(e))
-
-            if args.once:
-                return
-
 
 if __name__ == "__main__":
     main()
