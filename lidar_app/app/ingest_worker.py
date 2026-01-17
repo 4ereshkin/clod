@@ -66,7 +66,6 @@ def main():
             print(f"CLAIMED run_id={r.id} scan={r.scan_id} company={r.company_id} schema={r.schema_version}")
 
             try:
-                repo.set_ingest_run_status(run_id=int(r.id), status="RUNNING")
                 process_run(repo, int(r.id))
             except Exception as e:
                 err = {
