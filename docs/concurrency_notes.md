@@ -8,6 +8,7 @@
 - Plan to enable S3 bucket versioning (reminder to turn on later).
 
 ## Open questions
+- Define the exact idempotency key for ingest runs (raw artifacts fingerprint + schema_version).
 - Choose the exact stale-run timeout policy (activity heartbeat is already used).
 - Decide on S3 ↔ DB consistency flow (intent → S3 write → approve).
 - Decide whether cleanup should be DB-driven only or include S3 listing reconciliation.
