@@ -114,7 +114,16 @@ class Artifact(Base):
 
 class IngestRun(Base):
     __tablename__ = "ingest_runs"
-    __table_args__ = {"schema": "core"}
+    __table_args__ = (
+        UniqueConstraint(
+            "company_id",
+            "scan_id",
+            "schema_version",
+            "input_fingerprint",
+            name="uq_ingest_runs_company_scan_schema_fingerprint",
+        ),
+        {"schema": "core"},
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
 
@@ -128,6 +137,7 @@ class IngestRun(Base):
     error = Column(JSONB, nullable=False, server_default='{}')
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     finished_at = Column(DateTime(timezone=True), nullable=True)
 
 
