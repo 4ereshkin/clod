@@ -389,6 +389,45 @@ async def process_ingest_run(
 
 
 @activity.defn
+async def reconcile_pending_ingest_manifests(limit: int = 100) -> Dict[str, Any]:
+    def _reconcile() -> Dict[str, Any]:
+        repo = Repo()
+        s3 = S3Store(settings.s3_endpoint, settings.s3_access_key, settings.s3_secret_key, settings.s3_region)
+
+        pending = repo.list_pending_artifacts(kind="derived.ingest_manifest", limit=limit)
+        approved = 0
+        failed = 0
+        skipped = 0
+
+        for art in pending:
+            etag, size = s3.head_object(S3Ref(art.s3_bucket, art.s3_key))
+            if etag and size is not None:
+                repo.update_artifact_status(
+                    artifact_id=int(art.id),
+                    status="AVAILABLE",
+                    etag=etag,
+                    size_bytes=size,
+                )
+                approved += 1
+            else:
+                repo.update_artifact_status(
+                    artifact_id=int(art.id),
+                    status="FAILED",
+                )
+                failed += 1
+
+        return {
+            "pending_checked": len(pending),
+            "approved": approved,
+            "failed": failed,
+            "skipped": skipped,
+        }
+
+    activity.heartbeat({"status": "reconciling", "limit": limit})
+    return await asyncio.to_thread(_reconcile)
+
+
+@activity.defn
 async def get_scan(
     scan_id: str,
 ) -> Dict[str, Any]:

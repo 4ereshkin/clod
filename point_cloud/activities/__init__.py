@@ -29,6 +29,7 @@ from .ingest_activities import (
     upload_raw_artifact,
     create_ingest_run,
     process_ingest_run,
+    reconcile_pending_ingest_manifests,
     get_scan,
     list_raw_artifacts,
 )
@@ -45,6 +46,7 @@ __all__ = [
     "upload_raw_artifact",
     "create_ingest_run",
     "process_ingest_run",
+    "reconcile_pending_ingest_manifests",
     "get_scan",
     "list_raw_artifacts",
     "export_merged_laz",

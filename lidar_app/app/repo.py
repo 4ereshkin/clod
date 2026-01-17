@@ -626,6 +626,42 @@ class Repo:
                 db.expunge(art)
             return art
 
+    def list_pending_artifacts(
+            self,
+            *,
+            kind: str,
+            status: str = "PENDING",
+            limit: int = 100,
+    ) -> list[Artifact]:
+        with self.session() as db:
+            res = db.execute(
+                select(Artifact)
+                .where(Artifact.kind == kind, Artifact.status == status)
+                .order_by(Artifact.created_at.asc())
+                .limit(limit)
+            ).scalars().all()
+            for art in res:
+                db.expunge(art)
+            return cast(list[Artifact], res)
+
+    def update_artifact_status(
+            self,
+            *,
+            artifact_id: int,
+            status: str,
+            etag: str | None = None,
+            size_bytes: int | None = None,
+    ) -> None:
+        with self.session() as db:
+            art = db.get(Artifact, artifact_id)
+            if not art:
+                raise RuntimeError(f"Artifact {artifact_id} not found")
+            art.status = status
+            if etag is not None:
+                art.etag = etag
+            if size_bytes is not None:
+                art.size_bytes = size_bytes
+
     def add_scan_edges(self, company_id: str, dataset_version_id: str, edges: list[dict]) -> int:
         """
         Upsert edges by unique key (dataset_version_id, scan_id_from, scan_id_to, kind).

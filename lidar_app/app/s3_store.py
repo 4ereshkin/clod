@@ -1,5 +1,6 @@
 import boto3
 from botocore.client import Config
+from botocore.exceptions import ClientError
 
 import re
 _ALLOWED = re.compile(r"[^a-zA-Z0-9._-]+")
@@ -70,6 +71,18 @@ class S3Store:
         )
         etag = resp.get('ETag')
         return etag.strip('"') if isinstance(etag, str) else None, len(data)
+
+    def head_object(self, ref: S3Ref) -> Tuple[str | None, int | None]:
+        try:
+            head = self.client.head_object(Bucket=ref.bucket, Key=ref.key)
+        except ClientError as exc:
+            code = exc.response.get("Error", {}).get("Code")
+            if code in {"404", "NoSuchKey", "NotFound"}:
+                return None, None
+            raise
+        etag = head.get("ETag")
+        size = head.get("ContentLength")
+        return etag.strip('"') if isinstance(etag, str) else None, int(size) if size is not None else None
 
 
 def derived_manifest_key(prefix: str, schema_version: str) -> str:
