@@ -431,8 +431,20 @@ class Repo:
                 finished_at=None,
             )
             db.add(run)
-            db.flush()
-            return int(run.id)
+            try:
+                db.flush()
+                return int(run.id)
+            except IntegrityError:
+                db.rollback()
+                existing = db.execute(
+                    select(IngestRun.id).where(
+                        IngestRun.company_id == company_id,
+                        IngestRun.scan_id == scan_id,
+                        IngestRun.schema_version == schema_version,
+                        IngestRun.input_fingerprint == input_fingerprint,
+                    )
+                ).scalar_one()
+                return int(existing)
 
     def set_ingest_run_status(
             self,
