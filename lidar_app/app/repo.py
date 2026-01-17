@@ -6,13 +6,13 @@ from typing import Optional, Iterator, cast
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from sqlalchemy import select, update, func, case
+from sqlalchemy import select, update, func, case, or_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from ulid import ULID
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from lidar_app.app.db import get_session
 from lidar_app.app.models import CRS, Company, Dataset, Scan, Artifact, IngestRun, DatasetVersion, ScanEdge, ScanPose
@@ -431,8 +431,20 @@ class Repo:
                 finished_at=None,
             )
             db.add(run)
-            db.flush()
-            return int(run.id)
+            try:
+                db.flush()
+                return int(run.id)
+            except IntegrityError:
+                db.rollback()
+                existing = db.execute(
+                    select(IngestRun.id).where(
+                        IngestRun.company_id == company_id,
+                        IngestRun.scan_id == scan_id,
+                        IngestRun.schema_version == schema_version,
+                        IngestRun.input_fingerprint == input_fingerprint,
+                    )
+                ).scalar_one()
+                return int(existing)
 
     def set_ingest_run_status(
             self,
@@ -458,9 +470,16 @@ class Repo:
             schema_version: str | None = None,
             company_id: str | None = None,
             limit: int = 10,
+            running_timeout_seconds: int = 300,
     ): # list[IngestRun]
         with self.session() as db:
-            q = select(IngestRun).where(IngestRun.status == 'QUEUED')
+            stale_before = datetime.now(timezone.utc) - timedelta(seconds=running_timeout_seconds)
+            q = select(IngestRun).where(
+                or_(
+                    IngestRun.status == 'QUEUED',
+                    (IngestRun.status == 'RUNNING') & (IngestRun.updated_at < stale_before),
+                )
+            )
             if schema_version:
                 q = q.where(IngestRun.schema_version == schema_version)
             if company_id:
@@ -475,8 +494,11 @@ class Repo:
         with self.session() as db:
             res = db.execute(
                 update(IngestRun)
-                .where(IngestRun.id == run_id, IngestRun.status == 'QUEUED')
-                .values(status='RUNNING')
+                .where(
+                    IngestRun.id == run_id,
+                    IngestRun.status.in_(['QUEUED', 'RUNNING']),
+                )
+                .values(status='RUNNING', updated_at=func.now())
             )
             return bool(res.rowcount)
 
@@ -636,8 +658,8 @@ class Repo:
             (ScanEdge.weight < stmt.excluded.weight, stmt.excluded.weight),
                     else_=ScanEdge.weight
             ),
-                "transform_guess": stmt.excluded.transform_guess,
-                "meta": stmt.excluded.meta,
+                "transform_guess": ScanEdge.transform_guess.op("||")(stmt.excluded.transform_guess),
+                "meta": ScanEdge.meta.op("||")(stmt.excluded.meta),
                 "updated_at": func.now(),
             }
 
@@ -673,8 +695,12 @@ class Repo:
                 constraint="uq_scan_poses_dv_scan",
                 set_={
                     "pose": pg_insert(ScanPose).excluded.pose,
-                    "quality": pg_insert(ScanPose).excluded.quality,
-                    "meta": pg_insert(ScanPose).excluded.meta,
+                    "quality": case(
+                        (ScanPose.quality < pg_insert(ScanPose).excluded.quality,
+                         pg_insert(ScanPose).excluded.quality),
+                        else_=ScanPose.quality
+                    ),
+                    "meta": ScanPose.meta.op("||")(pg_insert(ScanPose).excluded.meta),
                     "updated_at": func.now(),
                 },
             )

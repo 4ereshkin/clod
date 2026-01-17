@@ -14,8 +14,6 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone
 
 from temporalio import activity
-from temporalio.exceptions import ApplicationError
-
 from lidar_app.app.repo import Repo
 from lidar_app.app.s3_store import S3Store, scan_prefix, derived_manifest_key
 from lidar_app.app.config import settings
@@ -255,10 +253,7 @@ async def create_ingest_run(
             input_fingerprint=fp,
         )
         if existing and not force:
-            raise ApplicationError(
-                f"Ingest run already exists: {existing.id} (status: {existing.status})",
-                non_retryable=True,
-            )
+            return int(existing.id)
 
         # Create new ingest run
         run_id = repo.create_ingest_run(
@@ -340,13 +335,13 @@ async def process_ingest_run(
         )
 
         # Update ingest run status
-        repo.set_ingest_run_status(run_id=run_id, status="DONE", set_finished_at=True)
+        repo.set_ingest_run_status(run_id=run_id, status="SUCCEEDED", set_finished_at=True)
 
         return {
             "run_id": run_id,
             "manifest_key": derived_manifest_key(prefix, run.schema_version),
             "manifest_bucket": settings.s3_bucket,
-            "status": "DONE",
+            "status": "SUCCEEDED",
         }
 
     activity.heartbeat({"status": "processing", "run_id": run_id})
