@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 from temporalio import activity
 from lidar_app.app.repo import Repo
-from lidar_app.app.s3_store import S3Store, scan_prefix, derived_manifest_key
+from lidar_app.app.s3_store import S3Store, S3Ref, scan_prefix, derived_manifest_key
 from lidar_app.app.config import settings
 from lidar_app.app.models import IngestRun, Scan, Artifact
 from lidar_app.app.artifact_service import store_artifact
@@ -292,54 +292,94 @@ async def process_ingest_run(
 
         # Get ingest run
         run = repo.get_ingest_run(run_id)
+        repo.set_ingest_run_status(run_id=run_id, status="RUNNING")
 
-        # Get scan and raw artifacts
-        scan = repo.get_scan(run.scan_id)
-        raw_arts = repo.list_raw_artifacts(run.scan_id)
+        try:
+            # Get scan and raw artifacts
+            scan = repo.get_scan(run.scan_id)
+            raw_arts = repo.list_raw_artifacts(run.scan_id)
 
-        # Validate inputs
-        if not raw_arts:
-            raise RuntimeError(
-                f"No raw artifacts found for scan {run.scan_id}. "
-                f"Make sure artifacts were uploaded successfully."
+            # Validate inputs
+            if not raw_arts:
+                raise RuntimeError(
+                    f"No raw artifacts found for scan {run.scan_id}. "
+                    f"Make sure artifacts were uploaded successfully."
+                )
+
+            cloud = next((a for a in raw_arts if a.kind == "raw.point_cloud"), None)
+            if not cloud:
+                available_kinds = [a.kind for a in raw_arts]
+                raise RuntimeError(
+                    f"raw.point_cloud is required but not found. "
+                    f"Available artifact kinds: {available_kinds}. "
+                    f"Make sure point cloud artifact was uploaded successfully."
+                )
+
+            # Build manifest
+            manifest = build_ingest_manifest(run=run, scan=scan, raw_arts=raw_arts)
+            body = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
+
+            # Upload manifest to S3 and register derived artifact
+            prefix = scan_prefix(scan.company_id, scan.dataset_version_id, scan.id)
+            manifest_key = derived_manifest_key(prefix, run.schema_version)
+            existing_manifest = repo.find_derived_artifact(
+                scan_id=run.scan_id,
+                kind="derived.ingest_manifest",
+                schema_version=run.schema_version,
             )
-        
-        cloud = next((a for a in raw_arts if a.kind == "raw.point_cloud"), None)
-        if not cloud:
-            available_kinds = [a.kind for a in raw_arts]
-            raise RuntimeError(
-                f"raw.point_cloud is required but not found. "
-                f"Available artifact kinds: {available_kinds}. "
-                f"Make sure point cloud artifact was uploaded successfully."
+            if existing_manifest and existing_manifest.status == "AVAILABLE":
+                repo.set_ingest_run_status(run_id=run_id, status="SUCCEEDED", set_finished_at=True)
+                return {
+                    "run_id": run_id,
+                    "manifest_key": existing_manifest.s3_key,
+                    "manifest_bucket": existing_manifest.s3_bucket,
+                    "status": "SUCCEEDED",
+                }
+            if existing_manifest is None:
+                repo.register_artifact(
+                    company_id=run.company_id,
+                    scan_id=run.scan_id,
+                    kind="derived.ingest_manifest",
+                    bucket=settings.s3_bucket,
+                    key=manifest_key,
+                    schema_version=run.schema_version,
+                    etag=None,
+                    size_bytes=None,
+                    status="PENDING",
+                    meta={"format": "json"},
+                )
+            etag, size = s3.put_bytes(
+                S3Ref(settings.s3_bucket, manifest_key),
+                body,
+                content_type="application/json",
+            )
+            repo.upsert_derived_artifact(
+                company_id=run.company_id,
+                scan_id=run.scan_id,
+                kind="derived.ingest_manifest",
+                schema_version=run.schema_version,
+                s3_bucket=settings.s3_bucket,
+                s3_key=manifest_key,
+                etag=etag,
+                size_bytes=size,
+                status="AVAILABLE",
+                meta={"format": "json"},
             )
 
-        # Build manifest
-        manifest = build_ingest_manifest(run=run, scan=scan, raw_arts=raw_arts)
-        body = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
-
-        # Upload manifest to S3 and register derived artifact
-        prefix = scan_prefix(scan.company_id, scan.dataset_version_id, scan.id)
-        store_artifact(
-            repo=repo,
-            s3=s3,
-            company_id=run.company_id,
-            scan_id=run.scan_id,
-            kind="derived.ingest_manifest",
-            schema_version=run.schema_version,
-            bucket=settings.s3_bucket,
-            key=derived_manifest_key(prefix, run.schema_version),
-            data=body,
-            content_type="application/json",
-            status="AVAILABLE",
-            meta={"format": "json"},
-        )
-
-        # Update ingest run status
-        repo.set_ingest_run_status(run_id=run_id, status="SUCCEEDED", set_finished_at=True)
+            # Update ingest run status
+            repo.set_ingest_run_status(run_id=run_id, status="SUCCEEDED", set_finished_at=True)
+        except Exception as exc:
+            repo.set_ingest_run_status(
+                run_id=run_id,
+                status="FAILED",
+                error={"message": str(exc), "type": type(exc).__name__},
+                set_finished_at=True,
+            )
+            raise
 
         return {
             "run_id": run_id,
-            "manifest_key": derived_manifest_key(prefix, run.schema_version),
+            "manifest_key": manifest_key,
             "manifest_bucket": settings.s3_bucket,
             "status": "SUCCEEDED",
         }
