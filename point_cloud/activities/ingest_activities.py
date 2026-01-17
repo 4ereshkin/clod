@@ -14,10 +14,8 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone
 
 from temporalio import activity
-from temporalio.exceptions import ApplicationError
-
 from lidar_app.app.repo import Repo
-from lidar_app.app.s3_store import S3Store, scan_prefix, derived_manifest_key
+from lidar_app.app.s3_store import S3Store, S3Ref, scan_prefix, derived_manifest_key
 from lidar_app.app.config import settings
 from lidar_app.app.models import IngestRun, Scan, Artifact
 from lidar_app.app.artifact_service import store_artifact
@@ -255,10 +253,7 @@ async def create_ingest_run(
             input_fingerprint=fp,
         )
         if existing and not force:
-            raise ApplicationError(
-                f"Ingest run already exists: {existing.id} (status: {existing.status})",
-                non_retryable=True,
-            )
+            return int(existing.id)
 
         # Create new ingest run
         run_id = repo.create_ingest_run(
@@ -297,60 +292,139 @@ async def process_ingest_run(
 
         # Get ingest run
         run = repo.get_ingest_run(run_id)
+        repo.set_ingest_run_status(run_id=run_id, status="RUNNING")
 
-        # Get scan and raw artifacts
-        scan = repo.get_scan(run.scan_id)
-        raw_arts = repo.list_raw_artifacts(run.scan_id)
+        try:
+            # Get scan and raw artifacts
+            scan = repo.get_scan(run.scan_id)
+            raw_arts = repo.list_raw_artifacts(run.scan_id)
 
-        # Validate inputs
-        if not raw_arts:
-            raise RuntimeError(
-                f"No raw artifacts found for scan {run.scan_id}. "
-                f"Make sure artifacts were uploaded successfully."
+            # Validate inputs
+            if not raw_arts:
+                raise RuntimeError(
+                    f"No raw artifacts found for scan {run.scan_id}. "
+                    f"Make sure artifacts were uploaded successfully."
+                )
+
+            cloud = next((a for a in raw_arts if a.kind == "raw.point_cloud"), None)
+            if not cloud:
+                available_kinds = [a.kind for a in raw_arts]
+                raise RuntimeError(
+                    f"raw.point_cloud is required but not found. "
+                    f"Available artifact kinds: {available_kinds}. "
+                    f"Make sure point cloud artifact was uploaded successfully."
+                )
+
+            # Build manifest
+            manifest = build_ingest_manifest(run=run, scan=scan, raw_arts=raw_arts)
+            body = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
+
+            # Upload manifest to S3 and register derived artifact
+            prefix = scan_prefix(scan.company_id, scan.dataset_version_id, scan.id)
+            manifest_key = derived_manifest_key(prefix, run.schema_version)
+            existing_manifest = repo.find_derived_artifact(
+                scan_id=run.scan_id,
+                kind="derived.ingest_manifest",
+                schema_version=run.schema_version,
             )
-        
-        cloud = next((a for a in raw_arts if a.kind == "raw.point_cloud"), None)
-        if not cloud:
-            available_kinds = [a.kind for a in raw_arts]
-            raise RuntimeError(
-                f"raw.point_cloud is required but not found. "
-                f"Available artifact kinds: {available_kinds}. "
-                f"Make sure point cloud artifact was uploaded successfully."
+            if existing_manifest and existing_manifest.status == "AVAILABLE":
+                repo.set_ingest_run_status(run_id=run_id, status="SUCCEEDED", set_finished_at=True)
+                return {
+                    "run_id": run_id,
+                    "manifest_key": existing_manifest.s3_key,
+                    "manifest_bucket": existing_manifest.s3_bucket,
+                    "status": "SUCCEEDED",
+                }
+            if existing_manifest is None:
+                repo.register_artifact(
+                    company_id=run.company_id,
+                    scan_id=run.scan_id,
+                    kind="derived.ingest_manifest",
+                    bucket=settings.s3_bucket,
+                    key=manifest_key,
+                    schema_version=run.schema_version,
+                    etag=None,
+                    size_bytes=None,
+                    status="PENDING",
+                    meta={"format": "json"},
+                )
+            etag, size = s3.put_bytes(
+                S3Ref(settings.s3_bucket, manifest_key),
+                body,
+                content_type="application/json",
+            )
+            repo.upsert_derived_artifact(
+                company_id=run.company_id,
+                scan_id=run.scan_id,
+                kind="derived.ingest_manifest",
+                schema_version=run.schema_version,
+                s3_bucket=settings.s3_bucket,
+                s3_key=manifest_key,
+                etag=etag,
+                size_bytes=size,
+                status="AVAILABLE",
+                meta={"format": "json"},
             )
 
-        # Build manifest
-        manifest = build_ingest_manifest(run=run, scan=scan, raw_arts=raw_arts)
-        body = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
-
-        # Upload manifest to S3 and register derived artifact
-        prefix = scan_prefix(scan.company_id, scan.dataset_version_id, scan.id)
-        store_artifact(
-            repo=repo,
-            s3=s3,
-            company_id=run.company_id,
-            scan_id=run.scan_id,
-            kind="derived.ingest_manifest",
-            schema_version=run.schema_version,
-            bucket=settings.s3_bucket,
-            key=derived_manifest_key(prefix, run.schema_version),
-            data=body,
-            content_type="application/json",
-            status="AVAILABLE",
-            meta={"format": "json"},
-        )
-
-        # Update ingest run status
-        repo.set_ingest_run_status(run_id=run_id, status="DONE", set_finished_at=True)
+            # Update ingest run status
+            repo.set_ingest_run_status(run_id=run_id, status="SUCCEEDED", set_finished_at=True)
+        except Exception as exc:
+            repo.set_ingest_run_status(
+                run_id=run_id,
+                status="FAILED",
+                error={"message": str(exc), "type": type(exc).__name__},
+                set_finished_at=True,
+            )
+            raise
 
         return {
             "run_id": run_id,
-            "manifest_key": derived_manifest_key(prefix, run.schema_version),
+            "manifest_key": manifest_key,
             "manifest_bucket": settings.s3_bucket,
-            "status": "DONE",
+            "status": "SUCCEEDED",
         }
 
     activity.heartbeat({"status": "processing", "run_id": run_id})
     return await asyncio.to_thread(_process)
+
+
+@activity.defn
+async def reconcile_pending_ingest_manifests(limit: int = 100) -> Dict[str, Any]:
+    def _reconcile() -> Dict[str, Any]:
+        repo = Repo()
+        s3 = S3Store(settings.s3_endpoint, settings.s3_access_key, settings.s3_secret_key, settings.s3_region)
+
+        pending = repo.list_pending_artifacts(kind="derived.ingest_manifest", limit=limit)
+        approved = 0
+        failed = 0
+        skipped = 0
+
+        for art in pending:
+            etag, size = s3.head_object(S3Ref(art.s3_bucket, art.s3_key))
+            if etag and size is not None:
+                repo.update_artifact_status(
+                    artifact_id=int(art.id),
+                    status="AVAILABLE",
+                    etag=etag,
+                    size_bytes=size,
+                )
+                approved += 1
+            else:
+                repo.update_artifact_status(
+                    artifact_id=int(art.id),
+                    status="FAILED",
+                )
+                failed += 1
+
+        return {
+            "pending_checked": len(pending),
+            "approved": approved,
+            "failed": failed,
+            "skipped": skipped,
+        }
+
+    activity.heartbeat({"status": "reconciling", "limit": limit})
+    return await asyncio.to_thread(_reconcile)
 
 
 @activity.defn

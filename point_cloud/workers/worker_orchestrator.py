@@ -37,6 +37,7 @@ from point_cloud.workflows.full_pipeline_workflow import (
     FullPipelineWorkflowLegacy,
 )
 from point_cloud.workflows.cluster_workflow import ClusterPipeline
+from point_cloud.workflows.reconcile_ingest_workflow import ReconcileIngestWorkflow
 from point_cloud.activities.registration_icp_activities import refine_edges_with_icp
 from point_cloud.activities.preprocess_activities import (
     list_scans_by_dataset_version,
@@ -88,6 +89,7 @@ from point_cloud.activities import (
     upload_raw_artifact,
     create_ingest_run,
     process_ingest_run,
+    reconcile_pending_ingest_manifests,
     get_scan,
     list_raw_artifacts
 )
@@ -124,6 +126,7 @@ async def main() -> None:
             DownloadWorkflow,
             ProfilingWorkflow,
             ClusterPipeline,
+            ReconcileIngestWorkflow,
             FullPipelineWorkflow,
             *([FullPipelineWorkflowLegacy] if FullPipelineWorkflowLegacy else []),
         ],
@@ -137,6 +140,7 @@ async def main() -> None:
             upload_raw_artifact,
             create_ingest_run,
             process_ingest_run,
+            reconcile_pending_ingest_manifests,
             get_scan,
             list_raw_artifacts,
             download_from_s3,

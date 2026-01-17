@@ -6,13 +6,13 @@ from typing import Optional, Iterator, cast
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from sqlalchemy import select, update, func, case
+from sqlalchemy import select, update, func, case, or_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from ulid import ULID
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from lidar_app.app.db import get_session
 from lidar_app.app.models import CRS, Company, Dataset, Scan, Artifact, IngestRun, DatasetVersion, ScanEdge, ScanPose
@@ -431,8 +431,20 @@ class Repo:
                 finished_at=None,
             )
             db.add(run)
-            db.flush()
-            return int(run.id)
+            try:
+                db.flush()
+                return int(run.id)
+            except IntegrityError:
+                db.rollback()
+                existing = db.execute(
+                    select(IngestRun.id).where(
+                        IngestRun.company_id == company_id,
+                        IngestRun.scan_id == scan_id,
+                        IngestRun.schema_version == schema_version,
+                        IngestRun.input_fingerprint == input_fingerprint,
+                    )
+                ).scalar_one()
+                return int(existing)
 
     def set_ingest_run_status(
             self,
@@ -458,9 +470,16 @@ class Repo:
             schema_version: str | None = None,
             company_id: str | None = None,
             limit: int = 10,
+            running_timeout_seconds: int = 300,
     ): # list[IngestRun]
         with self.session() as db:
-            q = select(IngestRun).where(IngestRun.status == 'QUEUED')
+            stale_before = datetime.now(timezone.utc) - timedelta(seconds=running_timeout_seconds)
+            q = select(IngestRun).where(
+                or_(
+                    IngestRun.status == 'QUEUED',
+                    (IngestRun.status == 'RUNNING') & (IngestRun.updated_at < stale_before),
+                )
+            )
             if schema_version:
                 q = q.where(IngestRun.schema_version == schema_version)
             if company_id:
@@ -475,8 +494,11 @@ class Repo:
         with self.session() as db:
             res = db.execute(
                 update(IngestRun)
-                .where(IngestRun.id == run_id, IngestRun.status == 'QUEUED')
-                .values(status='RUNNING')
+                .where(
+                    IngestRun.id == run_id,
+                    IngestRun.status.in_(['QUEUED', 'RUNNING']),
+                )
+                .values(status='RUNNING', updated_at=func.now())
             )
             return bool(res.rowcount)
 
@@ -604,6 +626,42 @@ class Repo:
                 db.expunge(art)
             return art
 
+    def list_pending_artifacts(
+            self,
+            *,
+            kind: str,
+            status: str = "PENDING",
+            limit: int = 100,
+    ) -> list[Artifact]:
+        with self.session() as db:
+            res = db.execute(
+                select(Artifact)
+                .where(Artifact.kind == kind, Artifact.status == status)
+                .order_by(Artifact.created_at.asc())
+                .limit(limit)
+            ).scalars().all()
+            for art in res:
+                db.expunge(art)
+            return cast(list[Artifact], res)
+
+    def update_artifact_status(
+            self,
+            *,
+            artifact_id: int,
+            status: str,
+            etag: str | None = None,
+            size_bytes: int | None = None,
+    ) -> None:
+        with self.session() as db:
+            art = db.get(Artifact, artifact_id)
+            if not art:
+                raise RuntimeError(f"Artifact {artifact_id} not found")
+            art.status = status
+            if etag is not None:
+                art.etag = etag
+            if size_bytes is not None:
+                art.size_bytes = size_bytes
+
     def add_scan_edges(self, company_id: str, dataset_version_id: str, edges: list[dict]) -> int:
         """
         Upsert edges by unique key (dataset_version_id, scan_id_from, scan_id_to, kind).
@@ -636,8 +694,8 @@ class Repo:
             (ScanEdge.weight < stmt.excluded.weight, stmt.excluded.weight),
                     else_=ScanEdge.weight
             ),
-                "transform_guess": stmt.excluded.transform_guess,
-                "meta": stmt.excluded.meta,
+                "transform_guess": ScanEdge.transform_guess.op("||")(stmt.excluded.transform_guess),
+                "meta": ScanEdge.meta.op("||")(stmt.excluded.meta),
                 "updated_at": func.now(),
             }
 
@@ -673,8 +731,12 @@ class Repo:
                 constraint="uq_scan_poses_dv_scan",
                 set_={
                     "pose": pg_insert(ScanPose).excluded.pose,
-                    "quality": pg_insert(ScanPose).excluded.quality,
-                    "meta": pg_insert(ScanPose).excluded.meta,
+                    "quality": case(
+                        (ScanPose.quality < pg_insert(ScanPose).excluded.quality,
+                         pg_insert(ScanPose).excluded.quality),
+                        else_=ScanPose.quality
+                    ),
+                    "meta": ScanPose.meta.op("||")(pg_insert(ScanPose).excluded.meta),
                     "updated_at": func.now(),
                 },
             )
