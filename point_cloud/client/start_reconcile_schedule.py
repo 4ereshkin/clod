@@ -26,8 +26,8 @@ async def main() -> None:
 
     schedule = Schedule(
         action=ScheduleActionStartWorkflow(
-            ReconcileIngestWorkflow.run,
-            ReconcileIngestParams(limit=args.limit),
+            ReconcileIngestWorkflow,
+            args=[ReconcileIngestParams(limit=args.limit)],
             id=f"{args.schedule_id}-workflow",
             task_queue="point-cloud-task-queue",
         ),
