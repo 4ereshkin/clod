@@ -1,7 +1,9 @@
 import boto3
+from boto3.s3.transfer import TransferConfig
 from botocore.client import Config
 from botocore.exceptions import ClientError
 
+import os
 import re
 _ALLOWED = re.compile(r"[^a-zA-Z0-9._-]+")
 import unicodedata
@@ -18,7 +20,7 @@ class S3Ref:
 
 
 class S3Store:
-    def __init__(self, endpoint, access_key, secret_key, region):
+    def __init__(self, endpoint, access_key, secret_key, region, multipart_threshold_bytes: int | None = None):
         self.client = boto3.client(
             's3',
             endpoint_url=endpoint,
@@ -30,9 +32,16 @@ class S3Store:
             proxies={}
             ),
         )
+        if multipart_threshold_bytes is None:
+            env_gb = os.getenv("S3_MULTIPART_THRESHOLD_GB")
+            if env_gb:
+                multipart_threshold_bytes = int(env_gb) * 1024**3
+            else:
+                multipart_threshold_bytes = 8 * 1024**3
+        self.transfer_config = TransferConfig(multipart_threshold=multipart_threshold_bytes)
 
     def upload_file(self, ref: S3Ref, local_path: str) -> Tuple[str, int]:
-        self.client.upload_file(local_path, ref.bucket, ref.key)
+        self.client.upload_file(local_path, ref.bucket, ref.key, Config=self.transfer_config)
         head = self.client.head_object(Bucket=ref.bucket, Key=ref.key)
         etag = head['ETag'].strip('"')
         size = int(head['ContentLength'])
