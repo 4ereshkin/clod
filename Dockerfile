@@ -16,13 +16,9 @@ RUN apt-get update \
         libgl1 \
         libglib2.0-0 \
         ca-certificates \
-        gnupg \
-        wget \
-    && mkdir -p /etc/apt/keyrings \
-    && wget -qO /etc/apt/keyrings/osgeo-archive-keyring.gpg https://download.osgeo.org/osgeo_keyring.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/osgeo-archive-keyring.gpg] https://download.osgeo.org/debian bookworm main" > /etc/apt/sources.list.d/osgeo.list \
+    && echo "deb http://deb.debian.org/debian bookworm-backports main" > /etc/apt/sources.list.d/bookworm-backports.list \
     && apt-get update \
-    && apt-get install -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends -t bookworm-backports \
         pdal \
         libpdal-dev \
     && rm -rf /var/lib/apt/lists/*
