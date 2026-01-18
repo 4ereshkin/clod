@@ -33,3 +33,18 @@ python scripts/s3_gate_test.py
 1. PUT → HEAD → GET на малом объекте (байт‑в‑байт).
 2. `upload_file()` (multipart) на большом объекте + сверка hash после download.
 3. Параллельные HEAD/GET на небольшом объекте.
+
+## Troubleshooting (Windows)
+
+Если скрипт падает без traceback (например, `exit code 0xC06D007F`), чаще всего это проблема нативных DLL
+в окружении Python. Проверьте базовые импорты:
+
+```
+python -X faulthandler -c "import boto3; import botocore; print(boto3.__version__)"
+```
+
+Если импорт падает, убедитесь, что:
+
+1. Используется то же окружение, где установлены зависимости из `requirements.txt`.
+2. Установлены системные компоненты (обычно **Microsoft Visual C++ Redistributable**).
+3. В случае Conda окружений — что `python` запускается именно из активированного env.
