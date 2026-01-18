@@ -28,6 +28,14 @@ python scripts/s3_gate_test.py
 - `--multipart-threshold-mb 8` — порог, после которого boto3 включает multipart.
 - `--parallel-workers 32 --parallel-rounds 128` — нагрузка на HEAD/GET.
 
+## Настройка порога multipart в приложении
+
+По умолчанию `S3Store` использует single PUT до 8 ГБ (threshold=8GB). Переопределить можно через env:
+
+```
+S3_MULTIPART_THRESHOLD_GB=8
+```
+
 ## Что проверяется
 
 1. PUT → HEAD → GET на малом объекте (байт‑в‑байт).
