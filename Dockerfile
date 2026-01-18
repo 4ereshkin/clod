@@ -13,18 +13,13 @@ RUN apt-get update \
         libpq-dev \
         gdal-bin \
         libgdal-dev \
+        pdal \
+        libpdal-dev \
         libgl1 \
         libglib2.0-0 \
         ca-certificates \
         gnupg \
         wget \
-    && mkdir -p /etc/apt/keyrings \
-    && wget -qO /etc/apt/keyrings/osgeo-archive-keyring.gpg https://download.osgeo.org/osgeo_keyring.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/osgeo-archive-keyring.gpg] https://download.osgeo.org/debian bookworm main" > /etc/apt/sources.list.d/osgeo.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-        pdal \
-        libpdal-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./
