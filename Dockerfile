@@ -13,6 +13,8 @@ RUN apt-get update \
         libpq-dev \
         gdal-bin \
         libgdal-dev \
+        pdal \
+        libpdal-dev \
         libgl1 \
         libglib2.0-0 \
         ca-certificates \
