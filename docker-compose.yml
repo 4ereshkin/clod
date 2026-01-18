@@ -93,6 +93,51 @@ services:
       mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
       tail -f /dev/null
       "
+
+  seaweed-master:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweed-master
+    profiles: ["seaweed"]
+    command: master -ip=seaweed-master -port=9333
+    ports:
+      - "${SEAWEED_MASTER_PORT}:9333"
+    volumes:
+      - ${SEAWEED_DATA_PATH}/master:/data
+
+  seaweed-volume:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweed-volume
+    profiles: ["seaweed"]
+    command: volume -mserver="seaweed-master:9333" -port=8080 -ip=seaweed-volume -dir=/data
+    depends_on:
+      - seaweed-master
+    ports:
+      - "${SEAWEED_VOLUME_PORT}:8080"
+    volumes:
+      - ${SEAWEED_DATA_PATH}/volume:/data
+
+  seaweed-filer:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweed-filer
+    profiles: ["seaweed"]
+    command: filer -master="seaweed-master:9333" -ip=seaweed-filer -port=8888
+    depends_on:
+      - seaweed-master
+      - seaweed-volume
+    ports:
+      - "${SEAWEED_FILER_PORT}:8888"
+    volumes:
+      - ${SEAWEED_DATA_PATH}/filer:/data
+
+  seaweed-s3:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweed-s3
+    profiles: ["seaweed"]
+    command: s3 -filer="seaweed-filer:8888" -port=8333
+    depends_on:
+      - seaweed-filer
+    ports:
+      - "${SEAWEED_S3_PORT}:8333"
   
   portainer:
       image: portainer/portainer-ce:latest

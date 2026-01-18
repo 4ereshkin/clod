@@ -22,9 +22,9 @@ class Settings:
     _minio_port: str = os.getenv("MINIO_PORT")
     _minio_host: str = f'http://127.0.0.1:{_minio_port}'
 
-    s3_endpoint: str = _minio_host
-    s3_access_key: str = os.getenv('MINIO_ROOT_USER')
-    s3_secret_key: str = os.getenv('MINIO_ROOT_PASSWORD'  )
+    s3_endpoint: str = os.getenv("S3_ENDPOINT", _minio_host)
+    s3_access_key: str = os.getenv("S3_ACCESS_KEY", os.getenv('MINIO_ROOT_USER'))
+    s3_secret_key: str = os.getenv("S3_SECRET_KEY", os.getenv('MINIO_ROOT_PASSWORD'))
     s3_bucket: str = os.getenv("S3_BUCKET", "lidar-data")
     s3_region: str = os.getenv("S3_REGION", "us-east-1")
 
