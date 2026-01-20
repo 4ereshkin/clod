@@ -37,8 +37,13 @@ class ClusterPipelineParams:
     dst_dir: str = "point_cloud/tmp/cluster"
     tile_size: float = 50.0
     splitter_buffer: float = 3.0
+    batch_size: int = 25
     csf_params: Dict[str, Any] = field(default_factory=dict)
     cluster_params: ClusterHeuristicsParams = field(default_factory=ClusterHeuristicsParams)
+    tiles: List[str] = field(default_factory=list)
+    tile_index: int = 0
+    cropped_tiles: List[str] = field(default_factory=list)
+    meta: Dict[str, Any] = field(default_factory=dict)
 
 
 @workflow.defn(name=f'{VERSION}_cluster')
@@ -54,44 +59,50 @@ class ClusterPipeline:
 
     @workflow.run
     async def run(self, params: ClusterPipelineParams):
-        self._stage = "Download merged point cloud"
         dataset_dir = Path(params.dst_dir) / params.dataset_version_id
-        raw_dir = dataset_dir / "raw"
+        tiles = params.tiles
+        meta = params.meta
+        cropped_tiles: List[str] = list(params.cropped_tiles)
 
-        merged_cloud = await workflow.execute_activity(
-            "download_dataset_version_artifact",
-            args=[
-                params.dataset_version_id,
-                "derived.merged_point_cloud",
-                params.schema_version,
-                str(raw_dir),
-            ],
-            start_to_close_timeout=timedelta(minutes=30)
-        )
+        if not tiles:
+            self._stage = "Download merged point cloud"
+            raw_dir = dataset_dir / "raw"
 
-        self._stage = "Extract scale/offset"
-        meta = await workflow.execute_activity(
-            "extract_scale_offset",
-            args=[merged_cloud["local_path"]],
-            start_to_close_timeout=timedelta(minutes=30)
-        )
+            merged_cloud = await workflow.execute_activity(
+                "download_dataset_version_artifact",
+                args=[
+                    params.dataset_version_id,
+                    "derived.merged_point_cloud",
+                    params.schema_version,
+                    str(raw_dir),
+                ],
+                start_to_close_timeout=timedelta(minutes=30)
+            )
 
-        self._stage = "Split into tiles"
-        tiles_result = await workflow.execute_activity(
-            "split_into_tiles",
-            args=[
-                merged_cloud["local_path"],
-                str(dataset_dir / "tiles"),
-                params.tile_size,
-                params.splitter_buffer,
-            ],
-            start_to_close_timeout=timedelta(minutes=30)
-        )
+            self._stage = "Extract scale/offset"
+            meta = await workflow.execute_activity(
+                "extract_scale_offset",
+                args=[merged_cloud["local_path"]],
+                start_to_close_timeout=timedelta(minutes=30)
+            )
+
+            self._stage = "Split into tiles"
+            tiles_result = await workflow.execute_activity(
+                "split_into_tiles",
+                args=[
+                    merged_cloud["local_path"],
+                    str(dataset_dir / "tiles"),
+                    params.tile_size,
+                    params.splitter_buffer,
+                ],
+                start_to_close_timeout=timedelta(minutes=30)
+            )
+            tiles = sorted(tiles_result["tiles"])
 
         self._stage = "Process tiles"
-        tiles: List[str] = sorted(tiles_result["tiles"])
-        cropped_tiles: List[str] = []
-        for tile in tiles:
+        start_index = params.tile_index
+        end_index = min(start_index + params.batch_size, len(tiles))
+        for tile in tiles[start_index:end_index]:
             tile_id = Path(tile).stem.replace("tile_", "")
             tile_root = dataset_dir / "tiles" / f"tile_{tile_id}"
             ground_dir = tile_root / "ground"
@@ -145,6 +156,25 @@ class ClusterPipeline:
                 start_to_close_timeout=timedelta(minutes=30)
             )
             cropped_tiles.append(crop_result["cropped_tile"])
+
+        if end_index < len(tiles):
+            self._stage = "Continue processing tiles"
+            await workflow.continue_as_new(
+                ClusterPipelineParams(
+                    dataset_version_id=params.dataset_version_id,
+                    schema_version=params.schema_version,
+                    dst_dir=params.dst_dir,
+                    tile_size=params.tile_size,
+                    splitter_buffer=params.splitter_buffer,
+                    batch_size=params.batch_size,
+                    csf_params=params.csf_params,
+                    cluster_params=params.cluster_params,
+                    tiles=tiles,
+                    tile_index=end_index,
+                    cropped_tiles=cropped_tiles,
+                    meta=meta,
+                )
+            )
 
         self._stage = "Merge classified tiles"
         derived_dir = dataset_dir / "derived"
