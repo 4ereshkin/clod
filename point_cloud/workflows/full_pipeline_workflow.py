@@ -65,14 +65,14 @@ class _FullPipelineWorkflowBase:
 
     def _extract_manifest_srs(self, manifest: Dict[str, Any]) -> Optional[str]:
         coordinate_system = manifest.get("coordinate_system") or {}
+        crs_id = coordinate_system.get("crs_id")
+        if isinstance(crs_id, str) and crs_id.strip():
+            return crs_id
         projjson = coordinate_system.get("projjson")
         if isinstance(projjson, dict):
             return json.dumps(projjson, ensure_ascii=False, sort_keys=True)
         if isinstance(projjson, str) and projjson.strip():
             return projjson
-        crs_id = coordinate_system.get("crs_id")
-        if isinstance(crs_id, str) and crs_id.strip():
-            return crs_id
         return None
 
     async def _run_full_pipeline(self, params: FullPipelineParams) -> Dict[str, Any]:
@@ -152,7 +152,7 @@ class _FullPipelineWorkflowBase:
             schema_version=params.schema_version,
             scan_ids=self._scan_ids,
             in_crs_id=params.dataset_crs_id,
-            in_srs=ingest_manifest_srs,
+            in_srs=None,
             out_srs=params.target_srs,
         )
         reproject_result = await workflow.execute_child_workflow(
