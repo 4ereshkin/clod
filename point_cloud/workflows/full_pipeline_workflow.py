@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -61,12 +62,25 @@ class _FullPipelineWorkflowBase:
             "dataset_version_id": self._dataset_version_id,
         }
 
+    def _extract_manifest_srs(self, manifest: Dict[str, Any]) -> Optional[str]:
+        coordinate_system = manifest.get("coordinate_system") or {}
+        projjson = coordinate_system.get("projjson")
+        if isinstance(projjson, dict):
+            return json.dumps(projjson, ensure_ascii=False, sort_keys=True)
+        if isinstance(projjson, str) and projjson.strip():
+            return projjson
+        crs_id = coordinate_system.get("crs_id")
+        if isinstance(crs_id, str) and crs_id.strip():
+            return crs_id
+        return None
+
     async def _run_full_pipeline(self, params: FullPipelineParams) -> Dict[str, Any]:
         scans = params.scans or []
         if not scans:
             raise ApplicationError("Full pipeline requires at least one scan with artifacts")
 
         ingest_results = []
+        ingest_manifest_srs: Optional[str] = None
         rp_once = RetryPolicy(maximum_attempts=1)
 
         for idx, scan in enumerate(scans, start=1):
@@ -98,6 +112,21 @@ class _FullPipelineWorkflowBase:
                 )
             self._scan_ids.append(scan_id)
 
+            manifest = await workflow.execute_activity(
+                "load_ingest_manifest",
+                args=[params.company_id, dataset_version_id, scan_id, params.schema_version],
+                start_to_close_timeout=timedelta(seconds=30),
+                retry_policy=rp_once,
+            )
+            candidate_srs = self._extract_manifest_srs(manifest)
+            if candidate_srs:
+                if ingest_manifest_srs is None:
+                    ingest_manifest_srs = candidate_srs
+                elif ingest_manifest_srs != candidate_srs:
+                    raise ApplicationError(
+                        "Ingest manifests use different coordinate systems for the same pipeline"
+                    )
+
         self._stage = "profiling"
         profiling_results = []
         for scan_id in self._scan_ids:
@@ -121,6 +150,7 @@ class _FullPipelineWorkflowBase:
             schema_version=params.schema_version,
             scan_ids=self._scan_ids,
             in_crs_id=params.dataset_crs_id,
+            in_srs=ingest_manifest_srs,
             out_srs=params.target_srs,
         )
         reproject_result = await workflow.execute_child_workflow(
