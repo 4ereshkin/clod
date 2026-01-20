@@ -108,28 +108,61 @@ async def export_merged_laz(
 
             stages: List[dict] = []
             local_files: List[Path] = []
+            merge_inputs: List[str] = []
 
             # 1) download each derived cloud locally and add reader + transform stage
-            for s in scans:
+            for idx, s in enumerate(scans, start=1):
                 _, art = _find_merge_cloud_artifact(repo, s.id, schema_version)
 
                 local = td / Path(art.s3_key).name
                 s3.download_file(S3Ref(art.s3_bucket, art.s3_key), str(local))
                 local_files.append(local)
 
-                stages.append({"type": "readers.las", "filename": str(local)})
+                reader_tag = f"scan_reader_{idx}"
+                transform_tag = f"scan_transform_{idx}"
+                stages.append(
+                    {
+                        "type": "readers.las",
+                        "filename": str(local),
+                        "tag": reader_tag,
+                    }
+                )
 
                 # apply absolute pose
                 M = _pose_to_pdal_matrix(pose_by_scan[s.id])
-                stages.append({"type": "filters.transformation", "matrix": M})
+                stages.append(
+                    {
+                        "type": "filters.transformation",
+                        "matrix": M,
+                        "inputs": [reader_tag],
+                        "tag": transform_tag,
+                    }
+                )
+                merge_inputs.append(transform_tag)
 
-            # 2) write merged
+            # 2) merge (if needed) and write
             out_local = td / out_name
-            stages.append({
-                "type": "writers.las",
-                "filename": str(out_local),
-                "compression": "laszip",
-            })
+            if len(merge_inputs) > 1:
+                merge_tag = "merge_all_scans"
+                stages.append(
+                    {
+                        "type": "filters.merge",
+                        "inputs": merge_inputs,
+                        "tag": merge_tag,
+                    }
+                )
+                writer_inputs = [merge_tag]
+            else:
+                writer_inputs = merge_inputs
+
+            stages.append(
+                {
+                    "type": "writers.las",
+                    "filename": str(out_local),
+                    "compression": "laszip",
+                    "inputs": writer_inputs,
+                }
+            )
 
             pipeline = {"pipeline": stages}
             _run_pdal_pipeline(pipeline)
