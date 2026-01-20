@@ -44,6 +44,21 @@ def _run_pdal_pipeline(pipeline: dict) -> None:
         ) from exc
 
 
+def _find_merge_cloud_artifact(repo: Repo, scan_id: str, schema_version: str) -> tuple[str, Any]:
+    for kind in (
+        "derived.registration_point_cloud",
+        "derived.preprocessed_point_cloud",
+        "derived.reprojected_point_cloud",
+    ):
+        art = repo.find_derived_artifact(scan_id, kind, schema_version)
+        if art:
+            return kind, art
+    raise RuntimeError(
+        f"No derived cloud found for scan {scan_id} "
+        "(registration/preprocessed/reprojected missing)"
+    )
+
+
 @activity.defn
 async def export_merged_laz(
     company_id: str,
@@ -52,7 +67,7 @@ async def export_merged_laz(
     out_name: str = "merged.laz",
 ) -> Dict[str, Any]:
     """
-    Downloads derived.reprojected_point_cloud for all scans in dataset_version,
+    Downloads derived.registration/preprocessed/reprojected point clouds for all scans,
     applies absolute ScanPose (core.scan_poses) to each, merges into one LAZ,
     uploads to S3. Returns s3 ref.
     """
@@ -96,9 +111,7 @@ async def export_merged_laz(
 
             # 1) download each derived cloud locally and add reader + transform stage
             for s in scans:
-                art = repo.find_derived_artifact(s.id, "derived.reprojected_point_cloud", schema_version)
-                if not art:
-                    raise RuntimeError(f"derived.reprojected_point_cloud not found for scan {s.id}")
+                _, art = _find_merge_cloud_artifact(repo, s.id, schema_version)
 
                 local = td / Path(art.s3_key).name
                 s3.download_file(S3Ref(art.s3_bucket, art.s3_key), str(local))

@@ -66,6 +66,19 @@ def _axis_from_order(axis_order: str | None) -> list[dict]:
     ]
 
 
+def _ellipsoid_from_name(name: str) -> dict:
+    normalized = name.strip().upper().replace(" ", "").replace("_", "")
+    ellipsoids = {
+        "GRS80": {"name": "GRS 1980", "semi_major_axis": 6378137.0, "inverse_flattening": 298.257222101},
+        "GRS1980": {"name": "GRS 1980", "semi_major_axis": 6378137.0, "inverse_flattening": 298.257222101},
+        "CGCS2000": {"name": "CGCS2000", "semi_major_axis": 6378137.0, "inverse_flattening": 298.257222101},
+        "CGCS2000DATUM": {"name": "CGCS2000", "semi_major_axis": 6378137.0, "inverse_flattening": 298.257222101},
+        "WGS84": {"name": "WGS 84", "semi_major_axis": 6378137.0, "inverse_flattening": 298.257223563},
+        "WGS1984": {"name": "WGS 84", "semi_major_axis": 6378137.0, "inverse_flattening": 298.257223563},
+    }
+    return ellipsoids.get(normalized, ellipsoids["GRS80"])
+
+
 def _build_projjson(coordinate_system: dict) -> dict | None:
     projection = coordinate_system.get("projection") or {}
     projection_type = projection.get("type")
@@ -92,6 +105,7 @@ def _build_projjson(coordinate_system: dict) -> dict | None:
     y_0 = projection.get("y_0", 0)
     datum = coordinate_system.get("datum") or projection.get("ellps") or "GRS80"
     units = coordinate_system.get("units") or "m"
+    ellipsoid = _ellipsoid_from_name(datum)
 
     return {
         "type": "ProjectedCRS",
@@ -102,6 +116,7 @@ def _build_projjson(coordinate_system: dict) -> dict | None:
             "datum": {
                 "type": "GeodeticReferenceFrame",
                 "name": datum,
+                "ellipsoid": ellipsoid,
             },
             "coordinate_system": {
                 "subtype": "ellipsoidal",
