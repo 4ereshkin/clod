@@ -93,7 +93,7 @@ class IngestWorkflow:
         # 1. Ensure company exists
         self._stage = "Ensuring company exists"
         await workflow.execute_activity(
-            "ensure_company",
+            "ensure_company",   
             args=[params.company_id],
             start_to_close_timeout=timedelta(seconds=30),
             retry_policy=RetryPolicy(maximum_attempts=3),

@@ -60,6 +60,8 @@ class DownloadWorkflow:
             wanted = set(params.kinds)
             raw_arts = [art for art in raw_arts if art['kind'] in wanted]
 
+        raw_arts = sorted(raw_arts, key=lambda art: (art.get("kind", ""), art.get("key", "")))
+
         if not raw_arts:
             raise ApplicationError(
                 f'No raw artifacts for scan {params.scan_id}',
@@ -84,7 +86,7 @@ class DownloadWorkflow:
         lock = asyncio.Lock()
         semaphore = asyncio.Semaphore(3)
 
-        async def download_artifact(art: Dict[str, str]) -> None:
+        async def download_artifact(art: Dict[str, str]) -> tuple[str, str]:
             kind = art["kind"]
             async with semaphore:
                 async with lock:
@@ -101,10 +103,13 @@ class DownloadWorkflow:
                     ),
                 )
             async with lock:
-                results[kind] = local_path
                 self._downloaded_artifacts += 1
+            return kind, local_path
 
-        await asyncio.gather(*(download_artifact(art) for art in raw_arts))
+        download_results = await asyncio.gather(
+            *(download_artifact(art) for art in raw_arts)
+        )
+        results = {kind: local_path for kind, local_path in download_results}
 
         self._stage = 'Workflow is done'
         self._current_kind = None
