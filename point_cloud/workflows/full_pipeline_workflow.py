@@ -152,7 +152,7 @@ class _FullPipelineWorkflowBase:
             schema_version=params.schema_version,
             scan_ids=self._scan_ids,
             in_crs_id=params.dataset_crs_id,
-            in_srs=None,
+            in_srs=ingest_manifest_srs,
             out_srs=params.target_srs,
         )
         reproject_result = await workflow.execute_child_workflow(
