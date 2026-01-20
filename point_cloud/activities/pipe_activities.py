@@ -90,7 +90,12 @@ def _rewrite_xyz_lines(text: str, new_xyz: dict[int, list[float]]) -> str:
     return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
 
 
-def _reproject_cloud_with_pdal(local_in: Path, local_out: Path, in_srs: str, out_srs: str) -> dict:
+def _reproject_cloud_with_pdal(
+    local_in: Path,
+    local_out: Path,
+    in_srs: str,
+    out_srs: str,
+) -> tuple[dict, int]:
     pipeline = {
         "pipeline": [
             {"type": "readers.las", "filename": str(local_in)},
@@ -100,12 +105,17 @@ def _reproject_cloud_with_pdal(local_in: Path, local_out: Path, in_srs: str, out
     }
     pipe = pdal.Pipeline(json.dumps(pipeline))
     try:
-        pipe.execute()
+        points = pipe.execute()
     except Exception as exc:
         raise RuntimeError(f"PDAL reprojection failed: {exc}") from exc
     if not local_out.exists():
         raise RuntimeError(f"PDAL reprojection produced no output: {local_out}")
-    return pipe.metadata or {}
+    if points == 0:
+        raise RuntimeError(
+            "PDAL reprojection produced zero points. "
+            f"in_srs={in_srs} out_srs={out_srs}"
+        )
+    return pipe.metadata or {}, int(points)
 
 
 @activity.defn
@@ -174,7 +184,7 @@ async def reproject_scan_to_target_crs(
 
             # reproject cloud
             local_out = td / f"{local_in.stem}__{out_srs.replace(':', '_')}{local_in.suffix}"
-            pdal_meta = _reproject_cloud_with_pdal(local_in, local_out, in_srs, out_srs)
+            pdal_meta, point_count = _reproject_cloud_with_pdal(local_in, local_out, in_srs, out_srs)
 
             # upload derived cloud
             derived_cloud_key = (
@@ -191,7 +201,12 @@ async def reproject_scan_to_target_crs(
                 key=derived_cloud_key,
                 local_file_path=str(local_out),
                 status="AVAILABLE",
-                meta={"in_srs": in_srs, "out_srs": out_srs, "pdal_metadata": pdal_meta},
+                meta={
+                    "in_srs": in_srs,
+                    "out_srs": out_srs,
+                    "point_count": point_count,
+                    "pdal_metadata": pdal_meta,
+                },
             )
 
             out = {
