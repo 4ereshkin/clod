@@ -148,6 +148,28 @@ def _build_projjson(coordinate_system: dict) -> dict | None:
     }
 
 
+def _apply_control_point_defaults(manifest: dict) -> None:
+    control_points = manifest.get("control_points") or {}
+    verified = control_points.get("verified_from_control_point") or {}
+    verified_cs = verified.get("coordinate_system") or {}
+
+    coordinate_system = manifest.setdefault("coordinate_system", {})
+    for key in ("crs_type", "datum", "units", "axis_order"):
+        if coordinate_system.get(key) is None and verified_cs.get(key) is not None:
+            coordinate_system[key] = verified_cs[key]
+
+    projection = coordinate_system.setdefault("projection", {})
+    verified_projection = verified_cs.get("projection") or {}
+    for key in ("type", "zone_width", "zone_number", "central_meridian"):
+        if projection.get(key) is None and verified_projection.get(key) is not None:
+            projection[key] = verified_projection[key]
+
+    if manifest.get("geometry_mode") is None and verified.get("geometry_mode") is not None:
+        manifest["geometry_mode"] = verified["geometry_mode"]
+    if manifest.get("z_measurement") is None and verified.get("z_measurement") is not None:
+        manifest["z_measurement"] = verified["z_measurement"]
+
+
 def build_ingest_manifest(*, run: IngestRun, scan: Scan, raw_arts: list[Artifact]) -> dict:
     """Build ingest manifest from run, scan and raw artifacts."""
     def a_to_dict(a: Artifact) -> dict:
@@ -210,6 +232,28 @@ def build_ingest_manifest(*, run: IngestRun, scan: Scan, raw_arts: list[Artifact
                 "z": None,
                 "z_mode": None,
             },
+            "verified_from_control_point": {
+                "who_guarantees": None,
+                "xyz_consistent": None,
+                "geometry_mode": None,
+                "z_measurement": None,
+                "gps": {
+                    "latlon_format": None,
+                    "height_type": None,
+                },
+                "coordinate_system": {
+                    "crs_type": None,
+                    "datum": None,
+                    "projection": {
+                        "type": None,
+                        "zone_width": None,
+                        "zone_number": None,
+                        "central_meridian": None,
+                    },
+                    "units": None,
+                    "axis_order": None,
+                },
+            },
         },
         "business_logic": {
             "company": scan.company_id,
@@ -246,6 +290,7 @@ def build_ingest_manifest(*, run: IngestRun, scan: Scan, raw_arts: list[Artifact
     }
 
     merged = _deep_merge(manifest, overrides)
+    _apply_control_point_defaults(merged)
     if "projjson" not in (merged.get("coordinate_system") or {}):
         merged.setdefault("coordinate_system", {})["projjson"] = _build_projjson(
             merged.get("coordinate_system") or {}
