@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import timedelta
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -8,7 +8,7 @@ import os
 
 from temporalio import workflow
 
-VERSION = os.environ["WORKFLOW_VERSION"] = 'MVP-plus'
+VERSION = os.environ.get("WORKFLOW_VERSION", "MVP-plus")
 SCHEMA_VERSION = '1.1.0'
 # SCHEMA_VERSION = os.environ['SCHEMA_VERSION']
 
@@ -89,7 +89,7 @@ class ClusterPipeline:
         )
 
         self._stage = "Process tiles"
-        tiles: List[str] = tiles_result["tiles"]
+        tiles: List[str] = sorted(tiles_result["tiles"])
         cropped_tiles: List[str] = []
         for tile in tiles:
             tile_id = Path(tile).stem.replace("tile_", "")
@@ -114,7 +114,7 @@ class ClusterPipeline:
                     args=[
                         classified_input,
                         classified_output,
-                        params.cluster_params.__dict__,
+                        asdict(params.cluster_params),
                     ],
                     start_to_close_timeout=timedelta(minutes=30)
                 )
