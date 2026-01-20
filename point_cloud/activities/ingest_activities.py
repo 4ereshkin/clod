@@ -707,6 +707,18 @@ async def get_scan(
 
 
 @activity.defn
+async def update_scan_meta(
+    scan_id: str,
+    meta_update: Dict[str, Any],
+) -> None:
+    def _update() -> None:
+        repo = Repo()
+        repo.update_scan_meta(scan_id, meta_update)
+
+    await asyncio.to_thread(_update)
+
+
+@activity.defn
 async def list_raw_artifacts(
     scan_id: str,
 ) -> List[Dict[str, Any]]:

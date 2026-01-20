@@ -32,6 +32,7 @@ from .ingest_activities import (
     reconcile_pending_ingest_manifests,
     get_scan,
     list_raw_artifacts,
+    update_scan_meta,
 )
 
 __all__ = [
@@ -49,6 +50,7 @@ __all__ = [
     "reconcile_pending_ingest_manifests",
     "get_scan",
     "list_raw_artifacts",
+    "update_scan_meta",
     "export_merged_laz",
     "extract_scale_offset",
     "split_into_tiles",

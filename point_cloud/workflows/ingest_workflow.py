@@ -37,6 +37,7 @@ class IngestWorkflowParams:
     schema_version: str = "1.1.0"
     force: bool = False
     artifacts: Optional[List[Dict[str, str]]] = None
+    scan_meta: Optional[Dict[str, Any]] = None
 
 
 @workflow.defn(name=f"{VERSION}-ingest")
@@ -154,6 +155,15 @@ class IngestWorkflow:
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
         self._scan_id = scan_id
+
+        if params.scan_meta:
+            self._stage = "Updating scan metadata"
+            await workflow.execute_activity(
+                "update_scan_meta",
+                args=[scan_id, params.scan_meta],
+                start_to_close_timeout=timedelta(seconds=30),
+                retry_policy=RetryPolicy(maximum_attempts=3),
+            )
 
         # 5. Get artifacts from params or wait for signal
         self._stage = "Preparing artifacts"

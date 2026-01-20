@@ -27,6 +27,7 @@ if not LEGACY_VERSION and VERSION.startswith("MVP") and VERSION != "MVP":
 @dataclass
 class FullPipelineScan:
     artifacts: List[Dict[str, str]]
+    scan_meta: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -93,6 +94,7 @@ class _FullPipelineWorkflowBase:
                 schema_version=params.schema_version,
                 force=params.force,
                 artifacts=scan.artifacts,
+                scan_meta=scan.scan_meta,
             )
 
             ingest_res = await workflow.execute_child_workflow(
