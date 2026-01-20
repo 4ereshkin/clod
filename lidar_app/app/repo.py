@@ -253,6 +253,23 @@ class Repo:
             db.expunge(scan)
             return scan
 
+    def update_scan_meta(self, scan_id: str, meta_update: dict) -> None:
+        def _deep_merge(base: dict, update: dict) -> dict:
+            merged = dict(base)
+            for key, value in update.items():
+                if isinstance(value, dict) and isinstance(merged.get(key), dict):
+                    merged[key] = _deep_merge(merged[key], value)
+                else:
+                    merged[key] = value
+            return merged
+
+        with self.session() as db:
+            scan = db.get(Scan, scan_id)
+            if not scan:
+                raise RuntimeError(f"Scan {scan_id} not found")
+            current = scan.meta or {}
+            scan.meta = _deep_merge(current, meta_update or {})
+
 # Artifacts
 
     def register_raw_artifact(

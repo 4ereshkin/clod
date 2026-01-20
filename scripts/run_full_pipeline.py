@@ -11,7 +11,7 @@ r"""
         --dataset "railway" \
         --dataset-crs "CGCS2000" \
         --target-srs "EPSG:4326" \
-        --scan "cloud=/data/scan1.laz;path=/data/scan1/path.txt;cp=/data/scan1/ControlPoint.txt" \
+        --scan "cloud=/data/scan1.laz;path=/data/scan1/path.txt;cp=/data/scan1/ControlPoint.txt;manifest=/data/scan1/manifest.json" \
         --scan "cloud=/data/scan2.laz;path=/data/scan2/path.txt;cp=/data/scan2/ControlPoint.txt"
 """
 
@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import os
 import sys
 import time
@@ -79,6 +80,37 @@ def build_artifacts(spec: dict[str, str]) -> list[dict[str, str]]:
     return artifacts
 
 
+def load_manifest(spec: dict[str, str]) -> dict | None:
+    manifest_path = spec.get("manifest")
+    if not manifest_path:
+        return None
+    path = Path(manifest_path)
+    text = path.read_text(encoding="utf-8")
+    if path.suffix in {".yaml", ".yml"}:
+        return yaml.safe_load(text) or {}
+    return json.loads(text)
+
+
+def load_config(path: str | None) -> dict:
+    if not path:
+        return {}
+    config_path = Path(path)
+    text = config_path.read_text(encoding="utf-8")
+    if config_path.suffix in {".yaml", ".yml"}:
+        return yaml.safe_load(text) or {}
+    return json.loads(text)
+
+
+def deep_merge(base: dict, update: dict) -> dict:
+    merged = dict(base)
+    for key, value in update.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
 def validate_files(spec: dict[str, str]) -> None:
     cloud_path = Path(spec["cloud"])
     if not cloud_path.exists():
@@ -87,6 +119,8 @@ def validate_files(spec: dict[str, str]) -> None:
         raise FileNotFoundError(f"Path file not found: {spec['path']}")
     if spec.get("cp") and not Path(spec["cp"]).exists():
         raise FileNotFoundError(f"ControlPoint file not found: {spec['cp']}")
+    if spec.get("manifest") and not Path(spec["manifest"]).exists():
+        raise FileNotFoundError(f"Manifest file not found: {spec['manifest']}")
 
 
 async def run_full_pipeline(params: "FullPipelineParams") -> None:
@@ -130,7 +164,14 @@ def main() -> None:
         "--scan",
         action="append",
         required=True,
-        help="Scan spec: cloud=<path>[;path=<path>][;cp=<path>]. Can be repeated.",
+        help=(
+            "Scan spec: cloud=<path>[;path=<path>][;cp=<path>][;manifest=<path>]. "
+            "Can be repeated."
+        ),
+    )
+    parser.add_argument(
+        "--config",
+        help="Optional JSON/YAML config with default manifest and per-scan overrides.",
     )
     parser.add_argument("--schema-version", default="1.1.0", help="Schema version")
     parser.add_argument("--bump-version", action="store_true", help="Create a new dataset version")
@@ -177,7 +218,24 @@ def main() -> None:
         validate_files(parsed)
         scan_specs.append(parsed)
 
-    scans = [FullPipelineScan(artifacts=build_artifacts(spec)) for spec in scan_specs]
+    config = load_config(args.config)
+    default_manifest = config.get("manifest") or {}
+    scan_overrides = config.get("scans") or []
+
+    scans = []
+    for spec in scan_specs:
+        manifest = deep_merge(default_manifest, load_manifest(spec) or {})
+        scan_index = len(scans)
+        if scan_index < len(scan_overrides):
+            override_manifest = (scan_overrides[scan_index] or {}).get("manifest") or {}
+            manifest = deep_merge(manifest, override_manifest)
+        scan_meta = {"manifest": manifest} if manifest else None
+        scans.append(
+            FullPipelineScan(
+                artifacts=build_artifacts(spec),
+                scan_meta=scan_meta,
+            )
+        )
 
     params = FullPipelineParams(
         company_id=args.company,

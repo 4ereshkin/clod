@@ -91,7 +91,8 @@ from point_cloud.activities import (
     process_ingest_run,
     reconcile_pending_ingest_manifests,
     get_scan,
-    list_raw_artifacts
+    list_raw_artifacts,
+    update_scan_meta,
 )
 from point_cloud.activities.cluster_activities import (
     extract_scale_offset,
@@ -143,6 +144,7 @@ async def main() -> None:
             reconcile_pending_ingest_manifests,
             get_scan,
             list_raw_artifacts,
+            update_scan_meta,
             download_from_s3,
 
             # pipeline / registration prep
