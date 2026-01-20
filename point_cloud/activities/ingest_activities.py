@@ -45,6 +45,109 @@ def _detect_point_cloud_format(raw_arts: list[Artifact]) -> str | None:
     return None
 
 
+def _linear_unit(unit: str) -> dict:
+    if unit in ("m", "meter", "metre", "meters", "metres"):
+        return {"type": "LinearUnit", "name": "metre", "conversion_factor": 1}
+    if unit in ("km", "kilometer", "kilometre", "kilometers", "kilometres"):
+        return {"type": "LinearUnit", "name": "kilometre", "conversion_factor": 1000}
+    return {"type": "LinearUnit", "name": unit, "conversion_factor": 1}
+
+
+def _axis_from_order(axis_order: str | None) -> list[dict]:
+    if not axis_order:
+        return [
+            {"name": "Easting", "abbreviation": "E", "direction": "east"},
+            {"name": "Northing", "abbreviation": "N", "direction": "north"},
+        ]
+    axes = []
+    mapping = {
+        "x_east": {"name": "Easting", "abbreviation": "E", "direction": "east"},
+        "y_north": {"name": "Northing", "abbreviation": "N", "direction": "north"},
+        "z_up": {"name": "Ellipsoidal height", "abbreviation": "h", "direction": "up"},
+    }
+    for entry in axis_order.split(","):
+        entry = entry.strip()
+        if entry in mapping:
+            axes.append(mapping[entry])
+    return axes or [
+        {"name": "Easting", "abbreviation": "E", "direction": "east"},
+        {"name": "Northing", "abbreviation": "N", "direction": "north"},
+    ]
+
+
+def _build_projjson(coordinate_system: dict) -> dict | None:
+    projection = coordinate_system.get("projection") or {}
+    projection_type = projection.get("type")
+    central_meridian = projection.get("central_meridian")
+    zone_width = projection.get("zone_width")
+    zone_number = projection.get("zone_number")
+
+    if projection_type is None and central_meridian is None and zone_width is None:
+        return None
+
+    method = "Transverse Mercator"
+    if projection_type not in (None, "GK", "MCK", "tmerc"):
+        method = str(projection_type)
+
+    lon_0 = central_meridian
+    if lon_0 is None and zone_width is not None and zone_number is not None:
+        lon_0 = (zone_width * zone_number) - (zone_width / 2)
+    if lon_0 is None:
+        return None
+
+    lat_0 = projection.get("lat_0", 0)
+    k = projection.get("k", 1)
+    x_0 = projection.get("x_0", 500000)
+    y_0 = projection.get("y_0", 0)
+    datum = coordinate_system.get("datum") or projection.get("ellps") or "GRS80"
+    units = coordinate_system.get("units") or "m"
+
+    return {
+        "type": "ProjectedCRS",
+        "name": coordinate_system.get("name") or f"{datum} / {method}",
+        "base_crs": {
+            "type": "GeographicCRS",
+            "name": datum,
+            "datum": {
+                "type": "GeodeticReferenceFrame",
+                "name": datum,
+            },
+            "coordinate_system": {
+                "subtype": "ellipsoidal",
+                "axis": [
+                    {"name": "Latitude", "abbreviation": "Lat", "direction": "north"},
+                    {"name": "Longitude", "abbreviation": "Lon", "direction": "east"},
+                ],
+                "unit": {"type": "AngularUnit", "name": "degree", "conversion_factor": 0.0174532925199433},
+            },
+        },
+        "conversion": {
+            "name": f"{method} conversion",
+            "method": {"name": method},
+            "parameters": [
+                {
+                    "name": "Latitude of natural origin",
+                    "value": lat_0,
+                    "unit": {"type": "AngularUnit", "name": "degree", "conversion_factor": 0.0174532925199433},
+                },
+                {
+                    "name": "Longitude of natural origin",
+                    "value": lon_0,
+                    "unit": {"type": "AngularUnit", "name": "degree", "conversion_factor": 0.0174532925199433},
+                },
+                {"name": "Scale factor at natural origin", "value": k, "unit": {"type": "ScaleUnit", "name": "unity", "conversion_factor": 1}},
+                {"name": "False easting", "value": x_0, "unit": _linear_unit(units)},
+                {"name": "False northing", "value": y_0, "unit": _linear_unit(units)},
+            ],
+        },
+        "coordinate_system": {
+            "subtype": "Cartesian",
+            "axis": _axis_from_order(coordinate_system.get("axis_order")),
+            "unit": _linear_unit(units),
+        },
+    }
+
+
 def build_ingest_manifest(*, run: IngestRun, scan: Scan, raw_arts: list[Artifact]) -> dict:
     """Build ingest manifest from run, scan and raw artifacts."""
     def a_to_dict(a: Artifact) -> dict:
@@ -142,7 +245,13 @@ def build_ingest_manifest(*, run: IngestRun, scan: Scan, raw_arts: list[Artifact
         },
     }
 
-    return _deep_merge(manifest, overrides)
+    merged = _deep_merge(manifest, overrides)
+    if "projjson" not in (merged.get("coordinate_system") or {}):
+        merged.setdefault("coordinate_system", {})["projjson"] = _build_projjson(
+            merged.get("coordinate_system") or {}
+        )
+
+    return merged
 
 
 @activity.defn
