@@ -1,14 +1,11 @@
-from typing import Optional, Literal
+from typing import Literal
 
 
-class UTMBuilderParams:
+class LatLonBuilderParams:
     datum: Literal['WGS84', 'CGCS2000', 'PZ90', 'SK42', 'SK95']
     z_mode: Literal['ellipsoidal', 'orthometric']
     axis_order: Literal['XYZ', 'ENU', 'NED']
 
-    utm_zone: Optional[int]
-    utm_hemisphere: Literal['N', 'S']
-
     geoid_model: str # при z_mode = 'orthometric'
 
-    units = 'metre'
+    units = 'degree'

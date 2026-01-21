@@ -6,8 +6,16 @@ class UTMBuilderParams:
     z_mode: Literal['ellipsoidal', 'orthometric']
     axis_order: Literal['XYZ', 'ENU', 'NED']
 
-    utm_zone: Optional[int]
-    utm_hemisphere: Literal['N', 'S']
+    gk_width: Literal[3, 6]
+    gk_number: Optional[int]
+
+    lon_0: Optional[float]
+    lat_0: Optional[float]
+
+    x_0: Optional[float]
+    y_0: Optional[float]
+
+    k0: Optional[float]
 
     geoid_model: str # при z_mode = 'orthometric'
 
