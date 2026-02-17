@@ -1,4 +1,11 @@
-from .domain.entities import ControlPoint, Dataset, PathFile, Point, PointCloud, Scan
+from .domain_entities import (
+    ControlPoint,
+    Dataset,
+    PathFile,
+    Point,
+    PointCloud,
+    Scan,
+)
 
 __all__ = [
     'Point',
