@@ -2,10 +2,11 @@ from typing import Optional, Literal
 from pydantic import BaseModel, ConfigDict
 
 
-class WorkflowIngestPayloadV1(BaseModel):
+class WorkflowIngestPayload(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     payload_version: Literal['v1'] = 'v1'
+    model_version: str = '1.0'
 
     company: str
     department: str
