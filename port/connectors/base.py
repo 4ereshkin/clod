@@ -3,8 +3,6 @@ from pydantic import BaseModel, Field
 
 import uuid
 
-from test_ideas.new_ingest.normalize_to_workflow_v1 import normalize_to_workflow_v1
-
 
 class Point(BaseModel):
     x: float
@@ -32,7 +30,7 @@ class PointCloud(BaseModel):
     provider: Literal['s3', 'fs'] # извлекаем файл по path или из S3, или из файловой системы
 
 class Scan(BaseModel):
-    scan_uuid: uuid.UUID = uuid.uuid4()
+    scan_uuid: uuid.UUID = Field(default_factory=uuid.uuid4)
     cp: ControlPoint
     trajectory: PathFile
     cloud: PointCloud
