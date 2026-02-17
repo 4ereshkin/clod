@@ -6,7 +6,7 @@ from typing import Dict, Tuple
 from pyproj import CRS
 
 from .ingest_request import IngestRequest, CRSEpsg, CRSWkt, CRSProjJSON, CRSCustom
-from .ingest_contract_v1 import WorkflowIngestPayloadV1
+from .ingest_contract import WorkflowIngestPayload
 from .msk_presets import MSKRegionPreset
 
 
@@ -118,17 +118,17 @@ def _wrap_boundcrs_with_towgs84(projected: dict, towgs84: str) -> dict:
     }
 
 
-def normalize_to_workflow_v1(
+def normalize_to_workflow(
     req: IngestRequest,
     *,
     msk_presets: Dict[int, MSKRegionPreset],
-) -> WorkflowIngestPayloadV1:
+) -> WorkflowIngestPayload:
     crs_spec = req.crs
 
     # 1) Direct sources
     if isinstance(crs_spec, CRSEpsg):
         built = CRS.from_epsg(crs_spec.epsg_code)
-        return WorkflowIngestPayloadV1(
+        return WorkflowIngestPayload(
             payload_version="v1",
             company=req.company,
             department=req.department,
@@ -142,7 +142,7 @@ def normalize_to_workflow_v1(
 
     if isinstance(crs_spec, CRSWkt):
         built = CRS.from_wkt(crs_spec.wkt_str)
-        return WorkflowIngestPayloadV1(
+        return WorkflowIngestPayload(
             payload_version="v1",
             company=req.company,
             department=req.department,
@@ -156,7 +156,7 @@ def normalize_to_workflow_v1(
 
     if isinstance(crs_spec, CRSProjJSON):
         built = CRS.from_json(crs_spec.projjson_str)
-        return WorkflowIngestPayloadV1(
+        return WorkflowIngestPayload(
             payload_version="v1",
             company=req.company,
             department=req.department,
@@ -185,7 +185,7 @@ def normalize_to_workflow_v1(
     # ccrs_type -> units fixed
     if c.ccrs_type == "latlon":
         units = "degree"
-        # build: V1 ограниченно (как в старом коде)
+        # build: current model ограниченно (как в старом коде)
         if c.datum == "WGS84":
             built = CRS.from_epsg(4326)
         elif c.datum == "CGCS2000":
@@ -193,9 +193,9 @@ def normalize_to_workflow_v1(
         elif c.datum == "SK42":
             built = CRS.from_epsg(4284)
         else:
-            raise ValueError(f"custom latlon datum={c.datum} not supported in V1 without wkt/projjson")
+            raise ValueError(f"custom latlon datum={c.datum} not supported in current model without wkt/projjson")
 
-        return WorkflowIngestPayloadV1(
+        return WorkflowIngestPayload(
             payload_version="v1",
             company=req.company,
             department=req.department,
@@ -222,7 +222,7 @@ def normalize_to_workflow_v1(
     # ---- UTM ----
     if c.zone_family == "UTM":
         if c.datum != "WGS84":
-            raise ValueError("UTM V1 supports only datum='WGS84' (EPSG:326/327)")
+            raise ValueError("UTM current model supports only datum='WGS84' (EPSG:326/327)")
         if c.utm_zone is None or c.utm_hemisphere is None:
             raise ValueError("UTM requires utm_zone and utm_hemisphere")
         if not (1 <= c.utm_zone <= 60):
@@ -231,7 +231,7 @@ def normalize_to_workflow_v1(
         epsg = (32600 + c.utm_zone) if c.utm_hemisphere == "N" else (32700 + c.utm_zone)
         built = CRS.from_epsg(epsg)
 
-        return WorkflowIngestPayloadV1(
+        return WorkflowIngestPayload(
             payload_version="v1",
             company=req.company,
             department=req.department,
@@ -253,7 +253,7 @@ def normalize_to_workflow_v1(
 
     # ---- GK ----
     if c.zone_family == "GK":
-        raise ValueError("GK V1 not supported yet")
+        raise ValueError("GK current model not supported yet")
 
     # ---- МСК ----
     if c.zone_family == "МСК":
@@ -285,16 +285,16 @@ def normalize_to_workflow_v1(
         if c.msk_variant == "gost":
             helmert = c.helmert_convention
             if helmert != "position_vector":
-                raise ValueError("V1: msk_variant='gost' requires helmert_convention='position_vector'")
+                raise ValueError("model: msk_variant='gost' requires helmert_convention='position_vector'")
 
             towgs84 = c.towgs84 or reg.gost_towgs84
             if not towgs84:
-                raise ValueError("V1: msk_variant='gost' requires towgs84 (or preset)")
+                raise ValueError("model: msk_variant='gost' requires towgs84 (or preset)")
             final = _wrap_boundcrs_with_towgs84(projected, towgs84)
 
         built = CRS.from_json(json.dumps(final))
 
-        return WorkflowIngestPayloadV1(
+        return WorkflowIngestPayload(
             payload_version="v1",
             company=req.company,
             department=req.department,
