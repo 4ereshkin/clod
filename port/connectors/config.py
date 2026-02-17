@@ -16,6 +16,14 @@ class S3Config(BaseModel):
     endpoint_url: str = Field(alias="S3_ENDPOINT_URL")
     region_name: str = Field(alias="S3_REGION_NAME", default='us-east-1')
 
+class KeyDBConfig(BaseModel):
+    host: str = Field(alias="KEYDB_HOST")
+    port: int = Field(alias="KEYDB_PORT")
+    password: str = Field(alias="KEYDB_PASSWORD")
+    username: str = Field(alias="KEYDB_USERNAME", default='default')
+
 
 class Config(BaseModel):
     rabbitmq: RabbitMQConfig = Field(default_factory=lambda: RabbitMQConfig(**env))
+    s3: S3Config = Field(default_factory=lambda: S3Config(**env))
+    keydb: KeyDBConfig = Field(default_factory=lambda: KeyDBConfig(**env))

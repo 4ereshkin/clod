@@ -4,12 +4,13 @@ import os
 from contextlib import asynccontextmanager
 from aiobotocore.session import get_session
 
-from dataclasses import dataclass
+from config import S3Config
 from typing import Optional
 
 from botocore.exceptions import ClientError
 
 
+"""
 @dataclass
 class S3ConnectionConfig:
     access_key: str
@@ -17,9 +18,10 @@ class S3ConnectionConfig:
     bucket_name: str
     endpoint_url: str
     region_name: str = 'us-east-1'
+"""
 
 class S3Client:
-    def __init__(self, net_params: S3ConnectionConfig):
+    def __init__(self, net_params: S3Config):
         self._net_params = net_params
         self.session = get_session()
 
