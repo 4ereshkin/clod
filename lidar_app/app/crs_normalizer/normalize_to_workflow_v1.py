@@ -5,8 +5,8 @@ from typing import Dict, Tuple
 
 from pyproj import CRS
 
-from .ingest_request import CRSNormalizeRequestV1, CRSEpsg, CRSWkt, CRSProjJSON, CRSCustom
-from .ingest_contract_v1 import NormalizedCRSPayloadV1
+from .ingest_request import IngestRequest, CRSEpsg, CRSWkt, CRSProjJSON, CRSCustom
+from .ingest_contract_v1 import WorkflowIngestPayloadV1
 from .msk_presets import MSKRegionPreset
 
 
@@ -26,7 +26,10 @@ def _build_msk_projected_projjson(
     lat_0: float,
     k0: float,
 ) -> dict:
+    # Базовая CRS: Pulkovo 1942 geographic
     base = CRS.from_epsg(4284)
+
+    # ProjectedCRS: Transverse Mercator
     return {
         "type": "ProjectedCRS",
         "name": "MSK (custom, SK42/Krassovsky)",
@@ -65,7 +68,7 @@ def _build_msk_projected_projjson(
                     "value": float(y_0),
                     "unit": {"type": "LinearUnit", "name": "metre", "conversion_factor": 1.0},
                     "id": {"authority": "EPSG", "code": 8807},
-                },
+                    },
             ],
         },
         "coordinate_system": {
@@ -115,17 +118,23 @@ def _wrap_boundcrs_with_towgs84(projected: dict, towgs84: str) -> dict:
     }
 
 
-def normalize_crs_v1(
-    req: CRSNormalizeRequestV1,
+def normalize_to_workflow_v1(
+    req: IngestRequest,
     *,
     msk_presets: Dict[int, MSKRegionPreset],
-) -> NormalizedCRSPayloadV1:
+) -> WorkflowIngestPayloadV1:
     crs_spec = req.crs
 
+    # 1) Direct sources
     if isinstance(crs_spec, CRSEpsg):
         built = CRS.from_epsg(crs_spec.epsg_code)
-        return NormalizedCRSPayloadV1(
+        return WorkflowIngestPayloadV1(
             payload_version="v1",
+            company=req.company,
+            department=req.department,
+            employee=req.employee,
+            plan=req.plan,
+            authority=req.authority,
             crs_source="epsg",
             epsg_code=crs_spec.epsg_code,
             built_crs_projjson=built.to_json(),
@@ -133,8 +142,13 @@ def normalize_crs_v1(
 
     if isinstance(crs_spec, CRSWkt):
         built = CRS.from_wkt(crs_spec.wkt_str)
-        return NormalizedCRSPayloadV1(
+        return WorkflowIngestPayloadV1(
             payload_version="v1",
+            company=req.company,
+            department=req.department,
+            employee=req.employee,
+            plan=req.plan,
+            authority=req.authority,
             crs_source="wkt",
             wkt_str=crs_spec.wkt_str,
             built_crs_projjson=built.to_json(),
@@ -142,26 +156,36 @@ def normalize_crs_v1(
 
     if isinstance(crs_spec, CRSProjJSON):
         built = CRS.from_json(crs_spec.projjson_str)
-        return NormalizedCRSPayloadV1(
+        return WorkflowIngestPayloadV1(
             payload_version="v1",
+            company=req.company,
+            department=req.department,
+            employee=req.employee,
+            plan=req.plan,
+            authority=req.authority,
             crs_source="projjson",
             projjson_str=crs_spec.projjson_str,
             built_crs_projjson=built.to_json(),
         )
 
+    # 2) Custom
     if not isinstance(crs_spec, CRSCustom):
         raise ValueError("Unknown CRS spec type")
 
+    # ---- base fields ----
     c = crs_spec
 
+    # z_mode -> geoid_model normalize
     geoid_model = None
     if c.z_mode == "orthometric":
         if not c.geoid_model:
             raise ValueError("z_mode='orthometric' requires geoid_model")
         geoid_model = c.geoid_model
 
+    # ccrs_type -> units fixed
     if c.ccrs_type == "latlon":
         units = "degree"
+        # build: V1 ограниченно (как в старом коде)
         if c.datum == "WGS84":
             built = CRS.from_epsg(4326)
         elif c.datum == "CGCS2000":
@@ -171,8 +195,13 @@ def normalize_crs_v1(
         else:
             raise ValueError(f"custom latlon datum={c.datum} not supported in V1 without wkt/projjson")
 
-        return NormalizedCRSPayloadV1(
+        return WorkflowIngestPayloadV1(
             payload_version="v1",
+            company=req.company,
+            department=req.department,
+            employee=req.employee,
+            plan=req.plan,
+            authority=req.authority,
             crs_source="custom",
             ccrs_type="latlon",
             datum=c.datum,
@@ -190,6 +219,7 @@ def normalize_crs_v1(
     if c.zone_family is None:
         raise ValueError("projection requires zone_family")
 
+    # ---- UTM ----
     if c.zone_family == "UTM":
         if c.datum != "WGS84":
             raise ValueError("UTM V1 supports only datum='WGS84' (EPSG:326/327)")
@@ -201,8 +231,13 @@ def normalize_crs_v1(
         epsg = (32600 + c.utm_zone) if c.utm_hemisphere == "N" else (32700 + c.utm_zone)
         built = CRS.from_epsg(epsg)
 
-        return NormalizedCRSPayloadV1(
+        return WorkflowIngestPayloadV1(
             payload_version="v1",
+            company=req.company,
+            department=req.department,
+            employee=req.employee,
+            plan=req.plan,
+            authority=req.authority,
             crs_source="custom",
             ccrs_type="projection",
             datum=c.datum,
@@ -216,9 +251,11 @@ def normalize_crs_v1(
             built_crs_projjson=built.to_json(),
         )
 
+    # ---- GK ----
     if c.zone_family == "GK":
         raise ValueError("GK V1 not supported yet")
 
+    # ---- МСК ----
     if c.zone_family == "МСК":
         if c.datum != "SK42":
             raise ValueError("МСК requires datum='SK42'")
@@ -257,8 +294,13 @@ def normalize_crs_v1(
 
         built = CRS.from_json(json.dumps(final))
 
-        return NormalizedCRSPayloadV1(
+        return WorkflowIngestPayloadV1(
             payload_version="v1",
+            company=req.company,
+            department=req.department,
+            employee=req.employee,
+            plan=req.plan,
+            authority=req.authority,
             crs_source="custom",
             ccrs_type="projection",
             datum=c.datum,
@@ -281,7 +323,3 @@ def normalize_crs_v1(
         )
 
     raise ValueError("Unknown zone_family")
-
-
-# backward-compatible alias (temporary)
-normalize_to_workflow_v1 = normalize_crs_v1
