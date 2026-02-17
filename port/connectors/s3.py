@@ -4,7 +4,7 @@ import os
 from contextlib import asynccontextmanager
 from aiobotocore.session import get_session
 
-from config import S3Config
+from .config import S3Config
 from typing import Optional
 
 from botocore.exceptions import ClientError
@@ -54,7 +54,7 @@ class S3Client:
                            local_file_path: Optional[str] = None,
                            ) -> bool:
         # Проверяет наличие объекта в S3 через HEAD. Если передан local_file_path, сравнивает ETag с MD5 локального файла
-        async with self.get_client(self) as client:
+        async with self.get_client() as client:
             try:
                 response = await client.head_object(Bucket=self._net_params.bucket_name, Key=key)
                 remote_etag = response.get('ETag', '').strip('"')
