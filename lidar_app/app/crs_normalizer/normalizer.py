@@ -5,7 +5,7 @@ from typing import Dict, Tuple
 
 from pyproj import CRS
 
-from .models_v1 import CRSNormalizeRequestV1, CRSNormalizeResultV1, CRSCustom, CRSEpsg, CRSProjJSON, CRSWkt
+from .models import CRSNormalizeRequest, CRSNormalizeResult, CRSCustom, CRSEpsg, CRSProjJSON, CRSWkt
 from .msk_presets import MSKRegionPreset
 
 
@@ -69,20 +69,20 @@ def _wrap_boundcrs_with_towgs84(projected: dict, towgs84: str) -> dict:
     }
 
 
-def normalize_crs_v1(req: CRSNormalizeRequestV1, *, msk_presets: Dict[int, MSKRegionPreset]) -> CRSNormalizeResultV1:
+def normalize_crs(req: CRSNormalizeRequest, *, msk_presets: Dict[int, MSKRegionPreset]) -> CRSNormalizeResult:
     crs_spec = req.crs
 
     if isinstance(crs_spec, CRSEpsg):
         built = CRS.from_epsg(crs_spec.epsg_code)
-        return CRSNormalizeResultV1(payload_version='v1', crs_source='epsg', epsg_code=crs_spec.epsg_code, built_crs_projjson=built.to_json())
+        return CRSNormalizeResult(payload_version='v1', crs_source='epsg', epsg_code=crs_spec.epsg_code, built_crs_projjson=built.to_json())
 
     if isinstance(crs_spec, CRSWkt):
         built = CRS.from_wkt(crs_spec.wkt_str)
-        return CRSNormalizeResultV1(payload_version='v1', crs_source='wkt', wkt_str=crs_spec.wkt_str, built_crs_projjson=built.to_json())
+        return CRSNormalizeResult(payload_version='v1', crs_source='wkt', wkt_str=crs_spec.wkt_str, built_crs_projjson=built.to_json())
 
     if isinstance(crs_spec, CRSProjJSON):
         built = CRS.from_json(crs_spec.projjson_str)
-        return CRSNormalizeResultV1(payload_version='v1', crs_source='projjson', projjson_str=crs_spec.projjson_str, built_crs_projjson=built.to_json())
+        return CRSNormalizeResult(payload_version='v1', crs_source='projjson', projjson_str=crs_spec.projjson_str, built_crs_projjson=built.to_json())
 
     if not isinstance(crs_spec, CRSCustom):
         raise ValueError('Unknown CRS spec type')
@@ -103,9 +103,9 @@ def normalize_crs_v1(req: CRSNormalizeRequestV1, *, msk_presets: Dict[int, MSKRe
         elif c.datum == 'SK42':
             built = CRS.from_epsg(4284)
         else:
-            raise ValueError(f'custom latlon datum={c.datum} not supported in V1 without wkt/projjson')
+            raise ValueError(f'custom latlon datum={c.datum} not supported in current model without wkt/projjson')
 
-        return CRSNormalizeResultV1(payload_version='v1', crs_source='custom', ccrs_type='latlon', datum=c.datum, z_mode=c.z_mode, axis_order=c.axis_order, geoid_model=geoid_model, units=units, built_crs_projjson=built.to_json())
+        return CRSNormalizeResult(payload_version='v1', crs_source='custom', ccrs_type='latlon', datum=c.datum, z_mode=c.z_mode, axis_order=c.axis_order, geoid_model=geoid_model, units=units, built_crs_projjson=built.to_json())
 
     if c.ccrs_type != 'projection':
         raise ValueError('Unknown ccrs_type')
@@ -116,7 +116,7 @@ def normalize_crs_v1(req: CRSNormalizeRequestV1, *, msk_presets: Dict[int, MSKRe
 
     if c.zone_family == 'UTM':
         if c.datum != 'WGS84':
-            raise ValueError("UTM V1 supports only datum='WGS84' (EPSG:326/327)")
+            raise ValueError("UTM supports only datum='WGS84' (EPSG:326/327)")
         if c.utm_zone is None or c.utm_hemisphere is None:
             raise ValueError('UTM requires utm_zone and utm_hemisphere')
         if not (1 <= c.utm_zone <= 60):
@@ -124,10 +124,10 @@ def normalize_crs_v1(req: CRSNormalizeRequestV1, *, msk_presets: Dict[int, MSKRe
 
         epsg = (32600 + c.utm_zone) if c.utm_hemisphere == 'N' else (32700 + c.utm_zone)
         built = CRS.from_epsg(epsg)
-        return CRSNormalizeResultV1(payload_version='v1', crs_source='custom', ccrs_type='projection', datum=c.datum, z_mode=c.z_mode, axis_order=c.axis_order, geoid_model=geoid_model, units=units, zone_family='UTM', utm_zone=c.utm_zone, utm_hemisphere=c.utm_hemisphere, built_crs_projjson=built.to_json())
+        return CRSNormalizeResult(payload_version='v1', crs_source='custom', ccrs_type='projection', datum=c.datum, z_mode=c.z_mode, axis_order=c.axis_order, geoid_model=geoid_model, units=units, zone_family='UTM', utm_zone=c.utm_zone, utm_hemisphere=c.utm_hemisphere, built_crs_projjson=built.to_json())
 
     if c.zone_family == 'GK':
-        raise ValueError('GK V1 not supported yet')
+        raise ValueError('GK not supported yet')
 
     if c.zone_family == 'МСК':
         if c.datum != 'SK42':
@@ -157,13 +157,13 @@ def normalize_crs_v1(req: CRSNormalizeRequestV1, *, msk_presets: Dict[int, MSKRe
         if c.msk_variant == 'gost':
             helmert = c.helmert_convention
             if helmert != 'position_vector':
-                raise ValueError("V1: msk_variant='gost' requires helmert_convention='position_vector'")
+                raise ValueError("model: msk_variant='gost' requires helmert_convention='position_vector'")
             towgs84 = c.towgs84 or reg.gost_towgs84
             if not towgs84:
-                raise ValueError("V1: msk_variant='gost' requires towgs84 (or preset)")
+                raise ValueError("model: msk_variant='gost' requires towgs84 (or preset)")
             final = _wrap_boundcrs_with_towgs84(projected, towgs84)
 
         built = CRS.from_json(json.dumps(final))
-        return CRSNormalizeResultV1(payload_version='v1', crs_source='custom', ccrs_type='projection', datum=c.datum, z_mode=c.z_mode, axis_order=c.axis_order, geoid_model=geoid_model, units=units, zone_family='МСК', lon_0=lon_0, lat_0=lat_0, k0=k0, x_0=x_0, y_0=y_0, msk_region=int(c.msk_region), msk_zone=int(c.msk_zone), msk_variant=c.msk_variant, towgs84=towgs84, helmert_convention=helmert, built_crs_projjson=built.to_json())
+        return CRSNormalizeResult(payload_version='v1', crs_source='custom', ccrs_type='projection', datum=c.datum, z_mode=c.z_mode, axis_order=c.axis_order, geoid_model=geoid_model, units=units, zone_family='МСК', lon_0=lon_0, lat_0=lat_0, k0=k0, x_0=x_0, y_0=y_0, msk_region=int(c.msk_region), msk_zone=int(c.msk_zone), msk_variant=c.msk_variant, towgs84=towgs84, helmert_convention=helmert, built_crs_projjson=built.to_json())
 
     raise ValueError('Unknown zone_family')

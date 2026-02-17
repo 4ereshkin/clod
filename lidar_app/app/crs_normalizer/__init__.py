@@ -1,15 +1,21 @@
-"""CRS normalization utilities extracted from `test_ideas/new_ingest`.
+"""CRS normalization utilities for ingest and workflow payload preparation."""
 
-This package provides a stable import path for production code.
-"""
-
-from .ingest_request import IngestRequest
-from .ingest_contract_v1 import WorkflowIngestPayloadV1
 from .handler import handle_ingest_request
-from .normalize_to_workflow_v1 import normalize_to_workflow_v1
+from .ingest_contract import WorkflowIngestPayload
+from .ingest_request import IngestRequest
+from .normalize_to_workflow import normalize_to_workflow
 
 
 def normalize_raw_to_projjson(raw: dict, *, msk_presets_path: str = "MSK_PRESETS.yaml") -> str | None:
     """Normalize raw ingest request and return built CRS as PROJJSON string."""
     payload = handle_ingest_request(raw, msk_presets_path=msk_presets_path)
     return payload.built_crs_projjson
+
+
+__all__ = [
+    "IngestRequest",
+    "WorkflowIngestPayload",
+    "handle_ingest_request",
+    "normalize_to_workflow",
+    "normalize_raw_to_projjson",
+]

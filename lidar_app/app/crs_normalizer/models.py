@@ -51,7 +51,7 @@ class CRSCustom(BaseModel):
 CRSSpec = Annotated[Union[CRSEpsg, CRSWkt, CRSProjJSON, CRSCustom], Field(discriminator='crs_source')]
 
 
-class CRSNormalizeRequestV1(BaseModel):
+class CRSNormalizeRequest(BaseModel):
     """Transport-agnostic request for CRS normalization."""
 
     model_config = ConfigDict(extra='forbid')
@@ -59,10 +59,11 @@ class CRSNormalizeRequestV1(BaseModel):
     crs: CRSSpec
 
 
-class CRSNormalizeResultV1(BaseModel):
+class CRSNormalizeResult(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     payload_version: Literal['v1'] = 'v1'
+    model_version: str = '1.0'
 
     crs_source: Literal['epsg', 'wkt', 'projjson', 'custom']
 
