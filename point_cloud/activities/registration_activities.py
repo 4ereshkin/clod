@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Tuple
 from temporalio import activity
 
 from lidar_app.app.repo import Repo
-from lidar_app.app.config import settings
+from lidar_app.app.env_vars import settings
 from lidar_app.app.s3_store import S3Store, S3Ref, safe_segment
 
 def _dsreg_prefix(company_id: str, dataset_version_id: str) -> str:

@@ -1,19 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-import json
-from pathlib import Path
-from typing import Optional, Dict, Any, List
-from datetime import datetime, timezone
+from typing import Optional, Dict, Any
 
 from temporalio import activity
-from temporalio.exceptions import ApplicationError
 
 from lidar_app.app.repo import Repo
-from lidar_app.app.s3_store import S3Store, scan_prefix, derived_manifest_key
-from lidar_app.app.config import settings
-from lidar_app.app.models import IngestRun, Scan, Artifact
-from lidar_app.app.artifact_service import store_artifact
 
 
 @activity.defn

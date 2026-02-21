@@ -1,5 +1,5 @@
-from lidar_app.app.db import get_session
-from lidar_app.app.models import Base  # важно: тут должен быть Base от declarative_base
+from infrastructure.db import get_session
+from infrastructure.orm_models import Base  # важно: тут должен быть Base от declarative_base
 from sqlalchemy import text
 
 def main():

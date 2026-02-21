@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from temporalio import activity
 
 from lidar_app.app.repo import Repo
-from lidar_app.app.config import settings
+from lidar_app.app.env_vars import settings
 from lidar_app.app.s3_store import S3Store, S3Ref
 
 import open3d as o3d

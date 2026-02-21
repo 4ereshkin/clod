@@ -1,4 +1,3 @@
-import json
 from datetime import datetime, timezone
 from pathlib import Path
 import sys
@@ -9,7 +8,7 @@ project_root = script_dir.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from .models import IngestRun, Scan, Artifact
+from infrastructure.orm_models import IngestRun, Scan, Artifact
 
 
 def _deep_merge(base: dict, overrides: dict) -> dict:

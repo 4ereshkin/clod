@@ -5,17 +5,14 @@ import json
 import re
 import tempfile
 import pdal
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, List, Tuple
 
 from botocore.exceptions import ClientError
-from sqlalchemy import select
 from temporalio import activity
 
-from lidar_app.app.models import CRS
 from lidar_app.app.repo import Repo
-from lidar_app.app.config import settings
+from lidar_app.app.env_vars import settings
 from lidar_app.app.s3_store import S3Store, S3Ref, derived_manifest_key, scan_prefix
 from lidar_app.app.artifact_service import download_artifact, store_artifact
 

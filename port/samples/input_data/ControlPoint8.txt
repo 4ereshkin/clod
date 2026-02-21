@@ -1,4 +1,0 @@
-the  x, y and z is 496551.197 6569285.464 87.283 
-the gps x, y and z is 5914.33509180 6256.37455540 85.28300000 
-degree: 6
-ellipsoid: cgcs2000
