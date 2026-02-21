@@ -12,7 +12,7 @@ import numpy as np
 import open3d as o3d
 from temporalio import activity
 
-from lidar_app.app.env_vars import settings
+from env_vars import settings
 from lidar_app.app.repo import Repo
 from lidar_app.app.s3_store import S3Ref, S3Store, safe_segment
 

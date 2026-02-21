@@ -4,7 +4,7 @@ import os
 from contextlib import asynccontextmanager
 from aiobotocore.session import get_session
 
-from infrastructure.config import S3Config
+from infrastructure.infrastructure_config import S3Config
 from typing import Optional
 
 from botocore.exceptions import ClientError

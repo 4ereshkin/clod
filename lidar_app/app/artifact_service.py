@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from lidar_app.app.env_vars import settings
+from env_vars import settings
 from lidar_app.app.repo import Repo
 from lidar_app.app.s3_store import S3Ref, S3Store, raw_cloud_key, raw_control_point_key, raw_path_key, scan_prefix
 

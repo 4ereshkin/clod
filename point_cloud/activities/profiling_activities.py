@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Iterable
+from typing import Any, Dict, Optional, Iterable
 from pathlib import Path
 
 import json
@@ -12,7 +12,7 @@ from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
 from lidar_app.app.artifact_service import store_artifact
-from lidar_app.app.env_vars import settings
+from env_vars import settings
 from lidar_app.app.repo import Repo
 from lidar_app.app.s3_store import scan_prefix, S3Store
 
