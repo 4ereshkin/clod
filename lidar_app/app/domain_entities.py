@@ -42,4 +42,6 @@ class Scan(BaseModel):
 
 class Dataset(BaseModel):
     dataset_uuid: uuid.UUID = Field(default_factory=uuid.uuid4)
+    path: str
+    provider: Literal['s3', 'fs']
     scans: list[Scan] = Field(default_factory=list)
