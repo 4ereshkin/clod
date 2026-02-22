@@ -1,7 +1,7 @@
 from time import time
 
 from typing import Literal, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from application.ingest.status import WorkflowStatus, ErrorCode
 
 
@@ -29,6 +29,7 @@ class S3ObjectRefDTO(BaseModel):
     etag: str = Field(min_length=1)
 
 
+@model_validator(mode='after')
 class ScanPayloadDTO(BaseModel):
     control_point: dict[str, S3ObjectRefDTO] = {}
     trajectory: dict[str, S3ObjectRefDTO] = {}
