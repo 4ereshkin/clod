@@ -4,6 +4,8 @@ import time
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from temporalio.exceptions import ApplicationError
+
 from application.ingest.contracts import ScenarioResult, StartIngestCommand, WorkflowStatus
 from application.ingest.mappers import to_result_objects, to_status_event
 from application.ingest.scenario_resolver import resolve_scenario
@@ -60,18 +62,31 @@ class StartIngestUseCase:
             "dataset": command.dataset,
         }
 
-        await self._push_status(command=command, status=WorkflowStatus.STARTING)
-        await self.temporal.start_workflow(
-            workflow_name=spec.workflow_name,
-            workflow_id=command.workflow_id,
-            task_queue=spec.task_queue,
-            payload=payload
-        )
+        await self._push_status(command=command, status=WorkflowStatus.STARTING, details={"payload": payload})
+        try:
+            await self.temporal.start_workflow(
+                workflow_name=spec.workflow_name,
+                workflow_id=command.workflow_id,
+                task_queue=spec.task_queue,
+                payload=payload
+            )
+        except ApplicationError as err:
+            await self._push_status(command=command, status=WorkflowStatus.FAILED,
+                                    details={"workflow_id": command.workflow_id, "error": err})
+            raise
+
 
         progress = await self.temporal.query_workflow(workflow_id=command.workflow_id, query_name=spec.query_name)
         await self._push_status(command=command, status=WorkflowStatus.RUNNING, details=progress)
 
-        raw_result = await self.temporal.wait_result(workflow_id=command.workflow_id)
+        raw_result = {}
+        try:
+            raw_result = await self.temporal.wait_result(workflow_id=command.workflow_id)
+        except ApplicationError as err:
+            await self._push_status(command=command, status=WorkflowStatus.FAILED,
+                                    details={"workflow_id": command.workflow_id, "error": err})
+            raise
+
         outputs = to_result_objects(raw_result.get("outputs", []))
 
         result = ScenarioResult(
@@ -84,7 +99,8 @@ class StartIngestUseCase:
 
         )
 
-        await self._push_status(command=command, status=WorkflowStatus.COMPLETED, details={"outputs": [o.__dict__ for o in outputs]})
+        await self._push_status(command=command, status=WorkflowStatus.COMPLETED,
+                                details={"outputs": [o.__dict__ for o in outputs]})
         await self.publisher.publish_completed(result)
         return result
 
