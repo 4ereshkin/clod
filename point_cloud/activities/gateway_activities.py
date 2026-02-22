@@ -13,18 +13,20 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
 
 from typing import Dict, List, Any, Optional
 from tkinter import Tk, filedialog
 from pathlib import Path
 from pdal import Reader
-from pprint import pprint
 
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 from .utilities import SelectOptions, Vec3
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -246,12 +248,12 @@ class Checkpoint:
     def _load_metadata(self, path: str) -> dict | bool:
         try:
             if not isinstance(path, str) or not path.strip():
-                print('Пустой путь к файлу')
+                logger.error('Пустой путь к файлу')
                 return False
 
             p = Path(path)
             if not p.exists():
-                print(f'Файл {path} не найден')
+                logger.error(f'Файл {path} не найден')
 
             reader = Reader.las(filename=path)
             pipe = reader.pipeline()
@@ -260,37 +262,36 @@ class Checkpoint:
             meta = pipe.metadata
 
             if not meta:
-                print(f'Ошибка извлечения метаданных: информация о метаданных отсутствует для {path}')
+                logger.error(f'Ошибка извлечения метаданных: информация о метаданных отсутствует для {path}')
                 return False
 
             if isinstance(meta, str):
                 try:
                     meta = json.loads(meta)
                 except json.JSONDecodeError as e:
-                    print(f'Ошибка парсинга JSON метаданных: {e}')
+                    logger.error(f'Ошибка парсинга JSON метаданных: {e}')
                     return False
 
             if not isinstance(meta, dict):
-                print(f"Ошибка: неожиданная структура метаданных ({type(meta)}): {path}")
+                logger.error(f"Ошибка: неожиданная структура метаданных ({type(meta)}): {path}")
                 return False
 
             payload = meta.get('metadata', meta)
-            print(f"Метаданные успешно загружены для: {p.name}")
+            logger.info(f"Метаданные успешно загружены для: {p.name}")
 
             return payload
         except Exception as e:
-            print(f'Ошибка извлечения метаданных PDAL: {e}')
+            logger.error(f'Ошибка извлечения метаданных PDAL: {e}')
             return False
-
 
     def _save_metadata_to_json(self, file_path: str, metadata: dict) -> str | bool:
         try:
             if not isinstance(file_path, str) or not file_path.strip():
-                print('Пустой путь при сохранении JSON')
+                logger.error('Пустой путь при сохранении JSON')
                 return False
 
             if not isinstance(metadata, dict):
-                print('Метаданные должны быть dict')
+                logger.error('Метаданные должны быть dict')
                 return False
 
             output_dir = Path("data/checkpoint_metadata")
@@ -299,19 +300,19 @@ class Checkpoint:
             file_name = Path(self.file_path).stem
             json_filename = output_dir / f"metadata_{file_name}.json"
 
-            print(f'Сохраняем метаданные в: {json_filename}')
-            pprint.pprint(metadata, indent=2)
+            logger.info(f'Сохраняем метаданные в: {json_filename}')
+            logger.info(f'Metadata content: {json.dumps(metadata, indent=2, ensure_ascii=False)}')
 
             with open(json_filename, 'w', encoding='utf-8') as f:
                 json.dump(metadata, f, ensure_ascii=False, indent=4)
 
             if json_filename.exists():
                 file_size = json_filename.stat().st_size
-                print(f'Файл создан, размер: {file_size} байт')
+                logger.info(f'Файл создан, размер: {file_size} байт')
                 return str(json_filename)
             else:
-                print(f'Ошибка: файл {json_filename} не создан')
+                logger.error(f'Ошибка: файл {json_filename} не создан')
                 return False
         except Exception as e:
-            print(f'Ошибка сохранения метаданных в JSON: {e}')
+            logger.error(f'Ошибка сохранения метаданных в JSON: {e}')
             return False
