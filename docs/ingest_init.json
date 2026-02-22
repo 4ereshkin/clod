@@ -1,0 +1,21 @@
+{
+  "workflow_id": "string",
+  "scenario": "ingest",
+  "version": {
+    "message_version": "0",
+    "pipeline_version": "1"
+  },
+  "dataset": {
+    "<scan_alias_or_id>": {
+      "control_point": {
+        "<part_id>": { "s3_key": "string", "etag": "string" }
+      },
+      "trajectory": {
+        "<part_id>": { "s3_key": "string", "etag": "string" }
+      },
+      "point_cloud": {
+        "<part_id>": { "s3_key": "string", "etag": "string" }
+      }
+    }
+  }
+}
