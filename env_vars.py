@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from dotenv import load_dotenv
 import os
+from urllib.parse import quote_plus
 
 
 @dataclass(frozen=True)
@@ -15,7 +16,7 @@ class Settings:
     _pgapp_db_port: str = os.getenv("PGAPP_DB_PORT")
     pgapp_host = '127.0.0.1'
 
-    pg_dsn: str = f'postgresql+psycopg2://{_pgapp_db_user}:{_pgapp_db_password}@{pgapp_host}:{_pgapp_db_port}/{_pgapp_db_name}'
+    pg_dsn: str = f'postgresql+psycopg2://{quote_plus(str(_pgapp_db_user))}:{quote_plus(str(_pgapp_db_password))}@{pgapp_host}:{_pgapp_db_port}/{quote_plus(str(_pgapp_db_name))}'
 
     # MinIO S3 хранилище для объектов пайплайнов
 
