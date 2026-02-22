@@ -3,6 +3,8 @@ from __future__ import annotations
 from application.ingest.contracts import ScenarioSpec
 
 
+# TODO: Вынести в конфигурацию registry, чтобы масштабировать сценарии
+
 def resolve_scenario(*, scenario: str,
                      pipeline_version: str) -> ScenarioSpec:
     key = (scenario.strip().lower(), pipeline_version.strip())

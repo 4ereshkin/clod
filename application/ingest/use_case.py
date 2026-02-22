@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -42,7 +43,12 @@ class StartIngestUseCase:
     publisher: EventPublisher
 
     async def execute(self, command: StartIngestCommand) -> ScenarioResult:
-        spec = resolve_scenario(scenario=command.scenario, pipeline_version=command.pipeline_version)
+        try:
+            spec = resolve_scenario(scenario=command.scenario, pipeline_version=command.pipeline_version)
+        except ValueError:
+            await self._push_status(command=command, status=WorkflowStatus.FAILED)
+            raise
+
         await self._push_status(command=command, status=WorkflowStatus.RESOLVED_SCENARIO,
                                 details={"workflow_name": spec.workflow_name})
 
@@ -74,6 +80,8 @@ class StartIngestUseCase:
             status=WorkflowStatus.COMPLETED,
             outputs=outputs,
             details=raw_result,
+            timestamp=time.time(),
+
         )
 
         await self._push_status(command=command, status=WorkflowStatus.COMPLETED, details={"outputs": [o.__dict__ for o in outputs]})

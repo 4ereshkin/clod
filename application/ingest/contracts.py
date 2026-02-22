@@ -38,4 +38,4 @@ class ScenarioResult(BaseModel):
     status: WorkflowStatus
     outputs: list[ResultObjectDTO] = Field(default_factory=list)
     details: dict[str, Any] = Field(default_factory=dict)
-    timestamp: float = time()
+    timestamp: float = Field(default_factory=time)

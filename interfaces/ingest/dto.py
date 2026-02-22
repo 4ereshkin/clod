@@ -15,7 +15,7 @@ class StatusEventDTO(BaseModel):
     workflow_id: str = Field(min_length=1)
     scenario: Literal['ingest']
     status: WorkflowStatus
-    timestamp: float = time()
+    timestamp: float = Field(default_factory=time)
     details: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -31,8 +31,8 @@ class S3ObjectRefDTO(BaseModel):
 
 @model_validator(mode='after')
 class ScanPayloadDTO(BaseModel):
-    control_point: dict[str, S3ObjectRefDTO] = {}
-    trajectory: dict[str, S3ObjectRefDTO] = {}
+    control_point: dict[str, S3ObjectRefDTO] = Field(default_factory=dict)
+    trajectory: dict[str, S3ObjectRefDTO] = Field(default_factory=dict)
     point_cloud: dict[str, S3ObjectRefDTO]
 
 
@@ -45,8 +45,8 @@ class IngestStartMessageDTO(BaseModel):
 
 class WorkflowCompletedDTO(BaseModel):
     workflow_id: str = Field(min_length=1)
-    scenario: Literal['ingest']
-    status: Literal[WorkflowStatus.COMPLETED]
+    scenario: str
+    status = WorkflowStatus.COMPLETED
     outputs: list[ResultObjectDTO]
 
 
@@ -57,4 +57,4 @@ class WorkflowFailedDTO(BaseModel):
     error_code: ErrorCode
     error_message: str
     retryable: bool
-    failed_at: float = time()
+    failed_at: float = Field(default_factory=time)

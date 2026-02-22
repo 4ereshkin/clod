@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from application.ingest.contracts import (
@@ -49,15 +50,15 @@ def to_status_event(*, workflow_id: str, scenario: str,
         scenario=scenario,
         status=status.value,
         details=details or {},
+        timestamp=time.time()
     )
 
 
 def to_completed_event(result: ScenarioResult) -> WorkflowCompletedDTO:
-    outputs = [ResultObjectDTO(kind=item.kind, s3_key=item.s3_key, etag=item.s3_key) for item in result.outputs]
+    outputs = [ResultObjectDTO(kind=item.kind, s3_key=item.s3_key, etag=item.etag) for item in result.outputs]
     return WorkflowCompletedDTO(
         workflow_id=result.workflow_id,
         scenario=result.scenario,
-        status = WorkflowStatus.COMPLETED,
         outputs=outputs,
     )
 
@@ -75,13 +76,14 @@ def to_failed_event(*, workflow_id: str,
         error_code=error_code,
         error_message=error_message,
         retryable=retryable,
+        failed_at=time.time()
     )
 
 
 def to_result_objects(raw_outputs: list[dict[str, Any]]) -> list[AppResultObjectDTO]:
     return [
-        AppResultObjectDTO(kind=str(item['kind']),
-                           s3_key=str(item['s3_key']),
-                           etag=item.get('etag'))
+        AppResultObjectDTO(kind=str(item.get('kind')),
+                           s3_key=str(item.get('s3_key')),
+                           etag=str(item.get('etag')))
         for item in raw_outputs
     ]
