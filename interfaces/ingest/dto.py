@@ -15,7 +15,7 @@ class StatusEventDTO(BaseModel):
     workflow_id: str = Field(min_length=1)
     scenario: Literal['ingest']
     status: WorkflowStatus
-    timestamp: float
+    timestamp: float = time()
     details: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -47,7 +47,7 @@ class WorkflowCompletedDTO(BaseModel):
     scenario: Literal['ingest']
     status: Literal[WorkflowStatus.COMPLETED]
     outputs: list[ResultObjectDTO]
-    
+
 
 class WorkflowFailedDTO(BaseModel):
     workflow_id: str = Field(min_length=1)
