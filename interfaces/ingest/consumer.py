@@ -15,4 +15,3 @@ class IngestConsumer:
             command = to_start_command(dto)
 
             await self.use_case.execute(command)
-

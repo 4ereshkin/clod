@@ -23,7 +23,6 @@ def to_status_event(*, workflow_id: str, scenario: str,
         timestamp=time.time()
     )
 
-
 def to_result_objects(raw_outputs: list[dict[str, Any]]) -> list[ResultObject]:
     return [
         ResultObject(kind=str(item.get('kind')),

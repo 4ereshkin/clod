@@ -6,9 +6,10 @@ from typing import Any, Protocol
 
 from temporalio.exceptions import ApplicationError
 
-from application.ingest.contracts import ScenarioResult, StartIngestCommand, WorkflowStatus
+from application.ingest.contracts import ScenarioResult, StartIngestCommand, WorkflowStatus, FailedEvent
 from application.ingest.mappers import to_result_objects, to_status_event
 from application.ingest.scenario_resolver import resolve_scenario
+from application.ingest.status import ErrorCode
 
 
 class TemporalGateway(Protocol):
@@ -47,8 +48,8 @@ class StartIngestUseCase:
     async def execute(self, command: StartIngestCommand) -> ScenarioResult:
         try:
             spec = resolve_scenario(scenario=command.scenario, pipeline_version=command.pipeline_version)
-        except ValueError:
-            await self._push_status(command=command, status=WorkflowStatus.FAILED)
+        except ValueError as err:
+            await self._push_status(command=command, status=WorkflowStatus.FAILED, details={"error": err})
             raise
 
         await self._push_status(command=command, status=WorkflowStatus.RESOLVED_SCENARIO,
@@ -71,8 +72,22 @@ class StartIngestUseCase:
                 payload=payload
             )
         except ApplicationError as err:
-            await self._push_status(command=command, status=WorkflowStatus.FAILED,
-                                    details={"workflow_id": command.workflow_id, "error": err})
+            await self.status_store.set_status(
+                workflow_id=command.workflow_id,
+                status=WorkflowStatus.FAILED.value,
+                payload={"error": str(err)},
+            )
+
+            failed_event = FailedEvent(
+                workflow_id=command.workflow_id,
+                scenario=command.scenario,
+                error_code=ErrorCode.TEMPORAL_START_ERROR,
+                error_message=str(err),
+                retryable=True,
+            )
+
+            await self.publisher.publish_failed(failed_event)
+
             raise
 
 

@@ -7,7 +7,7 @@ from application.ingest.contracts import ScenarioResult, StatusEvent, FailedEven
 from interfaces.ingest.mappers import to_completed_event, to_failed_event, to_status_dto
 
 
-class RabbitEventPublisher():
+class RabbitEventPublisher:
     def __init__(self, exchange: Exchange) -> None:
         self.exchange = exchange
 
