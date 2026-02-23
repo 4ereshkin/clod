@@ -45,6 +45,16 @@ class StatusEvent(BaseModel):
     details: dict[str, Any] = Field(default_factory=dict)
 
 
+class FailedEvent(BaseModel):
+    workflow_id: str = Field(min_length=1)
+    scenario: str
+    status: WorkflowStatus = WorkflowStatus.FAILED
+    error_code: ErrorCode
+    error_message: str
+    retryable: bool
+    failed_at: float = Field(default_factory=time)
+
+
 class ScenarioResult(BaseModel):
     workflow_id: str
     scenario: str

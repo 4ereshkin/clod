@@ -8,7 +8,8 @@ from application.ingest.contracts import (
     StartIngestCommand,
     StartIngestObjectRef,
     StartIngestScanPayload,
-    StatusEvent
+    StatusEvent,
+    FailedEvent
 )
 from application.ingest.status import (
     WorkflowStatus,
@@ -57,18 +58,13 @@ def to_completed_event(result: ScenarioResult) -> WorkflowCompletedDTO:
         outputs=outputs,
     )
 
-def to_failed_event(*, workflow_id: str,
-                    scenario: str,
-                    error_code: str,
-                    error_message: str,
-                    retryable: bool
-                    ) -> WorkflowFailedDTO:
+def to_failed_event(event: FailedEvent) -> WorkflowFailedDTO:
     return WorkflowFailedDTO(
-        workflow_id=workflow_id,
-        scenario=scenario,
+        workflow_id=event.workflow_id,
+        scenario=event.scenario,
         status=WorkflowStatus.FAILED,
-        error_code=error_code,
-        error_message=error_message,
-        retryable=retryable,
-        failed_at=time.time()
+        error_code=event.error_code,
+        error_message=event.error_message,
+        retryable=event.retryable,
+        failed_at=event.failed_at,
     )
