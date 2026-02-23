@@ -3,7 +3,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from application.ingest.status import WorkflowStatus, ErrorCode
+from application.common.contracts import (
+    WorkflowStatus, ResultObject
+)
 
 
 class StartIngestObjectRef(BaseModel):
@@ -29,30 +31,6 @@ class ScenarioSpec(BaseModel):
     workflow_name: str
     task_queue: str
     query_name: str = 'progress'
-
-
-class ResultObject(BaseModel):
-    kind: str
-    s3_key: str = Field(min_length=1)
-    etag: str = Field(min_length=1)
-
-
-class StatusEvent(BaseModel):
-    workflow_id: str = Field(min_length=1)
-    scenario: str
-    status: WorkflowStatus
-    timestamp: float = Field(default_factory=time)
-    details: dict[str, Any] = Field(default_factory=dict)
-
-
-class FailedEvent(BaseModel):
-    workflow_id: str = Field(min_length=1)
-    scenario: str
-    status: WorkflowStatus = WorkflowStatus.FAILED
-    error_code: ErrorCode
-    error_message: str
-    retryable: bool
-    failed_at: float = Field(default_factory=time)
 
 
 class ScenarioResult(BaseModel):

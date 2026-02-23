@@ -2,41 +2,19 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any
 
 from temporalio.exceptions import ApplicationError
 
-from application.ingest.contracts import ScenarioResult, StartIngestCommand, WorkflowStatus, FailedEvent
+from application.common.contracts import (
+    WorkflowStatus, ErrorCode, FailedEvent, ResultObject, StatusEvent
+)
+from application.common.interfaces import (
+    TemporalGateway, StatusStore, EventPublisher
+)
+from application.ingest.contracts import ScenarioResult, StartIngestCommand
 from application.ingest.mappers import to_result_objects, to_status_event
 from application.ingest.scenario_resolver import resolve_scenario
-from application.ingest.status import ErrorCode
-
-
-class TemporalGateway(Protocol):
-    async def start_workflow(self, *, workflow_name: str,
-                             workflow_id: str, task_queue: str,
-                             payload: dict[str, Any]) -> None:
-        ...
-    async def query_workflow(self, *, workflow_id: str,
-                             query_name: str) -> dict[str, Any]:
-        ...
-    async def wait_result(self, *, workflow_id: str,) -> dict[str, Any]:
-        ...
-
-
-class StatusStore(Protocol):
-    async def set_status(self, *, workflow_id: str, status: str,
-                         payload: dict[str, Any]) -> None:
-        ...
-
-
-class EventPublisher(Protocol):
-    async def publish_status(self, event: Any) -> None:
-        ...
-    async def publish_completed(self, event: Any) -> None:
-        ...
-    async def publish_failed(self, event: Any) -> None:
-        ...
 
 
 @dataclass

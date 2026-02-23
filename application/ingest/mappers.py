@@ -3,12 +3,10 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from application.ingest.contracts import (
+from application.common.contracts import (
     ResultObject,
-    StatusEvent
-)
-from application.ingest.status import (
-    WorkflowStatus,
+    StatusEvent,
+    WorkflowStatus
 )
 
 
