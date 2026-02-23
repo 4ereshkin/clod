@@ -29,7 +29,6 @@ class S3ObjectRefDTO(BaseModel):
     etag: str = Field(min_length=1)
 
 
-@model_validator(mode='after')
 class ScanPayloadDTO(BaseModel):
     control_point: dict[str, S3ObjectRefDTO] = Field(default_factory=dict)
     trajectory: dict[str, S3ObjectRefDTO] = Field(default_factory=dict)
@@ -46,7 +45,7 @@ class IngestStartMessageDTO(BaseModel):
 class WorkflowCompletedDTO(BaseModel):
     workflow_id: str = Field(min_length=1)
     scenario: str
-    status = WorkflowStatus.COMPLETED
+    status: Literal[WorkflowStatus.COMPLETED] = WorkflowStatus.COMPLETED
     outputs: list[ResultObjectDTO]
 
 
