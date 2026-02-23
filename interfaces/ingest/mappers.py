@@ -7,7 +7,8 @@ from application.ingest.contracts import (
     ScenarioResult,
     StartIngestCommand,
     StartIngestObjectRef,
-    StartIngestScanPayload
+    StartIngestScanPayload,
+    StatusEvent
 )
 from application.ingest.status import (
     WorkflowStatus,
@@ -17,6 +18,7 @@ from interfaces.ingest.dto import (
     ResultObjectDTO,
     WorkflowCompletedDTO,
     WorkflowFailedDTO,
+    StatusEventDTO
 )
 
 def to_start_command(message: IngestStartMessageDTO) -> StartIngestCommand:
@@ -36,6 +38,15 @@ def to_start_command(message: IngestStartMessageDTO) -> StartIngestCommand:
         message_version=message.version.message_version,
         pipeline_version=message.version.pipeline_version,
         dataset=dataset,
+    )
+
+def to_status_dto(event: StatusEvent) -> StatusEventDTO:
+    return StatusEventDTO(
+        workflow_id=event.workflow_id,
+        scenario=event.scenario,
+        status=event.status,
+        timestamp=event.timestamp,
+        details=event.details,
     )
 
 def to_completed_event(result: ScenarioResult) -> WorkflowCompletedDTO:

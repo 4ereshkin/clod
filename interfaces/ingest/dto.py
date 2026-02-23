@@ -13,7 +13,7 @@ class ResultObjectDTO(BaseModel):
 
 class StatusEventDTO(BaseModel):
     workflow_id: str = Field(min_length=1)
-    scenario: Literal['ingest']
+    scenario: str
     status: WorkflowStatus
     timestamp: float = Field(default_factory=time)
     details: dict[str, Any] = Field(default_factory=dict)
