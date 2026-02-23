@@ -16,6 +16,7 @@ class S3Config(BaseModel):
     endpoint_url: str = Field(alias="S3_ENDPOINT_URL")
     region_name: str = Field(alias="S3_REGION_NAME", default='us-east-1')
 
+
 class KeyDBConfig(BaseModel):
     host: str = Field(alias="KEYDB_HOST")
     port: int = Field(alias="KEYDB_PORT")

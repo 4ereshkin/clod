@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from env_vars import settings
+from legacy_env_vars import settings
 
 
 engine = create_engine(settings.pg_dsn, pool_pre_ping=True)
