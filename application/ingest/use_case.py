@@ -49,7 +49,7 @@ class StartIngestUseCase:
         try:
             spec = resolve_scenario(scenario=command.scenario, pipeline_version=command.pipeline_version)
         except ValueError as err:
-            await self._push_status(command=command, status=WorkflowStatus.FAILED, details={"error": err})
+            await self._push_status(command=command, status=WorkflowStatus.FAILED, details={"error": str(err)})
             raise
 
         await self._push_status(command=command, status=WorkflowStatus.RESOLVED_SCENARIO,
@@ -98,8 +98,16 @@ class StartIngestUseCase:
         try:
             raw_result = await self.temporal.wait_result(workflow_id=command.workflow_id)
         except ApplicationError as err:
-            await self._push_status(command=command, status=WorkflowStatus.FAILED,
-                                    details={"workflow_id": command.workflow_id, "error": err})
+            failed_event = FailedEvent(
+                workflow_id=command.workflow_id,
+                scenario=command.scenario,
+                error_code=ErrorCode.TEMPORAL_EXECUTION_ERROR,
+                error_message=str(err),
+                retryable=True,
+            )
+
+            await self.publisher.publish_failed(failed_event)
+
             raise
 
         outputs = to_result_objects(raw_result.get("outputs", []))
