@@ -11,7 +11,7 @@ from temporalio.common import RetryPolicy
 from point_cloud.workflows.ingest_workflow import IngestWorkflowParams
 from point_cloud.workflows.registration_solver_workflow import RegistrationSolverParams
 
-VERSION = os.environ["WORKFLOW_VERSION"]
+VERSION = os.getenv("WORKFLOW_VERSION", "MVP")
 
 @dataclass
 class MlsPipelineParams:

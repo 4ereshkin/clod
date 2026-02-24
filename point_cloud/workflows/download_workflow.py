@@ -10,7 +10,7 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 from temporalio.exceptions import ApplicationError
 
-VERSION = os.environ["WORKFLOW_VERSION"]
+VERSION = os.getenv("WORKFLOW_VERSION", "MVP")
 
 
 @dataclass

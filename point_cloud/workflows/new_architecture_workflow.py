@@ -13,7 +13,7 @@ from temporalio.exceptions import ApplicationError
 from point_cloud.workflows.smart_ingest_workflow import SmartIngestWorkflowParams
 from point_cloud.workflows.cluster_workflow import ClusterPipelineParams
 
-VERSION = os.environ["WORKFLOW_VERSION"]
+VERSION = os.getenv("WORKFLOW_VERSION", "MVP")
 
 @dataclass
 class NewArchitectureScan:

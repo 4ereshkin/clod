@@ -10,7 +10,7 @@ from temporalio.common import RetryPolicy
 
 from .download_workflow import DownloadWorkflowParams
 
-VERSION = os.environ["WORKFLOW_VERSION"]
+VERSION = os.getenv("WORKFLOW_VERSION", "MVP")
 
 
 @dataclass

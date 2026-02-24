@@ -18,7 +18,7 @@ from point_cloud.workflows.reproject_workflow import ReprojectWorkflowParams
 from point_cloud.workflows.prod_reg_workflow import ProdRegistrationWorkflowParams
 from point_cloud.workflows.cluster_workflow import ClusterPipelineParams
 
-VERSION = os.environ["WORKFLOW_VERSION"]
+VERSION = os.getenv("WORKFLOW_VERSION", "MVP")
 LEGACY_VERSION = os.environ.get("WORKFLOW_VERSION_LEGACY")
 if not LEGACY_VERSION and VERSION.startswith("MVP") and VERSION != "MVP":
     LEGACY_VERSION = "MVP"
