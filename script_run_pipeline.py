@@ -32,31 +32,49 @@ async def main():
 
                 if status == "DONE" or status == "FAILED":
                     logger.info("Pipeline finished.")
-                    # In a real CLI, we might exit here, but for simulation let's just log
             except Exception as e:
                 logger.error(f"Error decoding message: {e}")
 
     await queue.consume(on_message)
 
-    # Prepare Start Payload
+    # User provided path
+    test_file_path = r"D:\1_prod\data\user_data\НПС Крутое\wg\processed_clouds\small.laz"
+
+    # Prepare Start Payload with new structure
+    workflow_id = str(uuid.uuid4())
     payload = {
-        "company_id": "test_company",
-        "dataset_name": f"dataset_{uuid.uuid4().hex[:8]}",
-        "target_crs_id": "EPSG:32641",
-        "scans": [
-            {
-                "artifacts": [
-                    {"kind": "raw.point_cloud", "local_file_path": "/tmp/test.laz"}
-                ],
-                "scan_meta": {"project": "simulation"}
-            }
-        ],
-        "run_old_cluster": True
+      "workflow_id": workflow_id,
+      "scenario": "ingest",
+      "version":
+      {
+        "message_version": "0",
+        "pipeline_version": "1"
+      },
+      "dataset":
+      {
+        "scan1":
+          {
+            "point_cloud": {
+                "1": {
+                  "s3_key": test_file_path,
+                  "etag": "mock_etag_123"
+                }
+            },
+            "control_point": {},
+            "trajectory": {}
+          }
+      },
+      # Extra fields needed for mapping logic in main.py
+      "company_id": "test_company",
+      "dataset_name": f"dataset_{workflow_id[:8]}",
+      "target_crs_id": "EPSG:32641",
+      "run_old_cluster": True
     }
 
     # Publish Start Message
     routing_key = "pipeline.start"
     logger.info(f"Publishing start message to '{routing_key}'...")
+    logger.info(f"Payload: {json.dumps(payload, indent=2)}")
 
     await exchange.publish(
         Message(
