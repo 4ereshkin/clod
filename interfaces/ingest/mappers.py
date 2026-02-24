@@ -7,13 +7,14 @@ from application.ingest.contracts import (
     ScenarioResult,
     StartIngestCommand,
     StartIngestObjectRef,
-    StartIngestScanPayload,
+    StartIngestScanPayload
+)
+from application.common.contracts import (
     StatusEvent,
-    FailedEvent
+    FailedEvent,
+    WorkflowStatus
 )
-from application.ingest.status import (
-    WorkflowStatus,
-)
+
 from interfaces.ingest.dto import (
     IngestStartMessageDTO,
     ResultObjectDTO,
