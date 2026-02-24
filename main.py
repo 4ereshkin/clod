@@ -17,7 +17,7 @@ from infrastructure.new_pipeline.keydb_adapter import NewPipelineKeyDbAdapter
 from infrastructure.new_pipeline.rabbit_adapter import NewPipelineRabbitAdapter
 from infrastructure.new_pipeline.temporal_adapter import NewPipelineTemporalAdapter
 from interfaces.ingest.dto import IngestStartMessageDTO
-from interfaces.new_pipeline.dto import StartPipelineDTO
+from interfaces.new_pipeline.dto import StartPipelineDTO, TriggerPayloadDTO, map_trigger_to_start_dto
 from interfaces.ingest.mappers import to_start_command
 
 logging.basicConfig(level=logging.INFO)
@@ -77,7 +77,17 @@ async def main():
             async with message.process():
                 try:
                     payload = json.loads(message.body)
-                    dto = StartPipelineDTO(**payload)
+                    # Support both formats:
+                    # 1. New TriggerPayloadDTO (from external system)
+                    # 2. Legacy StartPipelineDTO (direct invocation)
+                    try:
+                        trigger = TriggerPayloadDTO(**payload)
+                        logger.info(f"Received trigger payload for workflow {trigger.workflow_id}")
+                        dto = map_trigger_to_start_dto(trigger)
+                    except Exception:
+                         # Fallback or assume direct DTO
+                        dto = StartPipelineDTO(**payload)
+
                     logger.info(f"Starting new pipeline for company {dto.company_id}")
                     await pipeline_uc.execute(dto)
                 except Exception as e:
