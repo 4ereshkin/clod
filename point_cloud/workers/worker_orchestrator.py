@@ -108,6 +108,7 @@ from point_cloud.activities.cluster_activities import (
     merge_tiles,
 )
 from point_cloud.activities.new_cluster_activities import cluster_scan_custom
+from point_cloud.activities.pipeline_status_activities import update_pipeline_status
 
 
 async def main() -> None:
@@ -200,6 +201,7 @@ async def main() -> None:
             merge_tiles,
             download_dataset_version_artifact,
             cluster_scan_custom,
+            update_pipeline_status,
         ],
     )
 
