@@ -649,6 +649,71 @@ async def process_ingest_run(
 
 
 @activity.defn
+async def count_scans_in_dataset_version(dataset_version_id: str) -> int:
+    """
+    Count the number of scans in a dataset version.
+    """
+    def _count():
+        repo = Repo()
+        scans = repo.list_scans_by_dataset_version(dataset_version_id)
+        return len(scans)
+
+    return await asyncio.to_thread(_count)
+
+
+@activity.defn
+async def update_ingest_manifest_with_logic(
+    scan_id: str,
+    extra_data: Dict[str, Any],
+    schema_version: str = "1.1.0",
+) -> None:
+    """
+    Update the derived.ingest_manifest artifact with extra logic fields
+    (e.g. georeference, reproject, target_crs).
+    """
+    def _update():
+        repo = Repo()
+        s3 = S3Store(settings.s3_endpoint, settings.s3_access_key, settings.s3_secret_key, settings.s3_region)
+
+        # 1. Find the manifest artifact
+        art = repo.find_derived_artifact(scan_id, "derived.ingest_manifest", schema_version)
+        if not art:
+            raise RuntimeError(f"Manifest not found for scan {scan_id}")
+
+        # 2. Download and parse
+        content = s3.get_bytes(S3Ref(art.s3_bucket, art.s3_key))
+        manifest = json.loads(content.decode("utf-8"))
+
+        # 3. Merge extra_data into manifest (e.g. into a new 'pipeline_logic' section or root)
+        # The user didn't specify exact path, but "write in manifest GEOPRIVYAZKA: NET" implies some field.
+        # Let's put it under a "logic" key or mix it in.
+        # Given "Displays in manifest as REPROJECT: YES", let's make a 'processing_directives' section.
+
+        if "processing_directives" not in manifest:
+            manifest["processing_directives"] = {}
+
+        manifest["processing_directives"].update(extra_data)
+
+        # 4. Upload back
+        body = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
+        etag, size = s3.put_bytes(
+            S3Ref(art.s3_bucket, art.s3_key),
+            body,
+            content_type="application/json",
+        )
+
+        # 5. Update DB artifact stats
+        repo.update_artifact_status(
+            artifact_id=int(art.id),
+            status="AVAILABLE",
+            etag=etag,
+            size_bytes=size
+        )
+
+    await asyncio.to_thread(_update)
+
+
+@activity.defn
 async def reconcile_pending_ingest_manifests(limit: int = 100) -> Dict[str, Any]:
     def _reconcile() -> Dict[str, Any]:
         repo = Repo()
