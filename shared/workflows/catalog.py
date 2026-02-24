@@ -15,3 +15,4 @@ INGEST_V1 = WorkflowBinding(
     task_queue='ingest-queue',
     query_name='progress',
 )
+
