@@ -20,6 +20,9 @@ of activities onto distinct queues.
 """
 
 import asyncio
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from temporalio.client import Client
 from temporalio.worker import Worker
