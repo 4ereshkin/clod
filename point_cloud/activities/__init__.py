@@ -33,6 +33,8 @@ from .ingest_activities import (
     get_scan,
     list_raw_artifacts,
     update_scan_meta,
+    count_scans_in_dataset_version,
+    update_ingest_manifest_with_logic
 )
 
 __all__ = [
@@ -58,4 +60,6 @@ __all__ = [
     "cluster_tile",
     "crop_buffer",
     "merge_tiles",
+    'count_scans_in_dataset_version',
+    'update_ingest_manifest_with_logic'
 ]

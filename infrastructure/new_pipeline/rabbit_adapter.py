@@ -1,5 +1,6 @@
 import asyncio
 import json
+from typing import Any, Dict
 from aio_pika import Exchange, Message
 from application.new_pipeline.interfaces import NewPipelineEventPublisher
 
