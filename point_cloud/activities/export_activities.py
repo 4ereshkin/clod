@@ -46,6 +46,7 @@ def _run_pdal_pipeline(pipeline: dict) -> None:
 
 def _find_merge_cloud_artifact(repo: Repo, scan_id: str, schema_version: str) -> tuple[str, Any]:
     for kind in (
+        "derived.clustered_point_cloud",
         "derived.registration_point_cloud",
         "derived.preprocessed_point_cloud",
         "derived.reprojected_point_cloud",
@@ -55,7 +56,7 @@ def _find_merge_cloud_artifact(repo: Repo, scan_id: str, schema_version: str) ->
             return kind, art
     raise RuntimeError(
         f"No derived cloud found for scan {scan_id} "
-        "(registration/preprocessed/reprojected missing)"
+        "(clustered/registration/preprocessed/reprojected missing)"
     )
 
 

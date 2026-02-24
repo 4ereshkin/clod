@@ -36,6 +36,8 @@ from point_cloud.workflows.full_pipeline_workflow import (
     FullPipelineWorkflow,
     FullPipelineWorkflowLegacy,
 )
+from point_cloud.workflows.new_architecture_workflow import NewArchitectureWorkflow
+from point_cloud.workflows.smart_ingest_workflow import SmartIngestWorkflow
 from point_cloud.workflows.cluster_workflow import ClusterPipeline
 from point_cloud.workflows.reconcile_ingest_workflow import ReconcileIngestWorkflow
 from point_cloud.activities.registration_icp_activities import refine_edges_with_icp
@@ -93,6 +95,8 @@ from point_cloud.activities import (
     get_scan,
     list_raw_artifacts,
     update_scan_meta,
+    count_scans_in_dataset_version,
+    update_ingest_manifest_with_logic,
 )
 from point_cloud.activities.cluster_activities import (
     extract_scale_offset,
@@ -103,6 +107,8 @@ from point_cloud.activities.cluster_activities import (
     crop_buffer,
     merge_tiles,
 )
+from point_cloud.activities.new_cluster_activities import cluster_scan_custom
+from point_cloud.activities.pipeline_status_activities import update_pipeline_status
 
 
 async def main() -> None:
@@ -130,6 +136,8 @@ async def main() -> None:
             ReconcileIngestWorkflow,
             FullPipelineWorkflow,
             *([FullPipelineWorkflowLegacy] if FullPipelineWorkflowLegacy else []),
+            NewArchitectureWorkflow,
+            SmartIngestWorkflow,
         ],
         activities=[
             # ingest
@@ -145,6 +153,8 @@ async def main() -> None:
             get_scan,
             list_raw_artifacts,
             update_scan_meta,
+            count_scans_in_dataset_version,
+            update_ingest_manifest_with_logic,
             download_from_s3,
 
             # pipeline / registration prep
@@ -189,7 +199,9 @@ async def main() -> None:
             cluster_tile,
             crop_buffer,
             merge_tiles,
-            download_dataset_version_artifact
+            download_dataset_version_artifact,
+            cluster_scan_custom,
+            update_pipeline_status,
         ],
     )
 
