@@ -29,7 +29,7 @@ if str(project_root) not in sys.path:
 
 
 def ensure_workflow_version() -> None:
-    if os.environ.get("WORKFLOW_VERSION"):
+    if os.getenv("WORKFLOW_VERSION", "MVP"):
         return
     config_path = project_root / "scripts" / "config.yaml"
     if not config_path.exists():

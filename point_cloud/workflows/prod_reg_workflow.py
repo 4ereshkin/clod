@@ -20,7 +20,7 @@ with workflow.unsafe.imports_passed_through():
     )
     from point_cloud.activities.export_activities import export_merged_laz
 
-VERSION = os.environ["WORKFLOW_VERSION"]
+VERSION = os.getenv("WORKFLOW_VERSION", "MVP")
 
 @dataclass
 class ProdRegistrationWorkflowParams:
