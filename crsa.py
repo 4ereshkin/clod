@@ -10,8 +10,7 @@ import json
 from typing import Optional
 
 import customtkinter as ctk
-from pyproj import CRS
-from pyproj.exceptions import CRSError
+from pyproj import CRS, CRSError
 
 # ── Тема ──────────────────────────────────────────────────────────────────────
 ctk.set_appearance_mode("dark")
