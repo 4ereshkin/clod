@@ -39,7 +39,6 @@ from point_cloud.workflows.full_pipeline_workflow import (
     FullPipelineWorkflow,
     FullPipelineWorkflowLegacy,
 )
-from point_cloud.workflows.new_architecture_workflow import NewArchitectureWorkflow
 from point_cloud.workflows.smart_ingest_workflow import SmartIngestWorkflow
 from point_cloud.workflows.cluster_workflow import ClusterPipeline
 from point_cloud.workflows.reconcile_ingest_workflow import ReconcileIngestWorkflow
@@ -110,8 +109,6 @@ from point_cloud.activities.cluster_activities import (
     crop_buffer,
     merge_tiles,
 )
-from point_cloud.activities.new_cluster_activities import cluster_scan_custom
-from point_cloud.activities.pipeline_status_activities import update_pipeline_status
 
 
 async def main() -> None:
@@ -139,7 +136,6 @@ async def main() -> None:
             ReconcileIngestWorkflow,
             FullPipelineWorkflow,
             *([FullPipelineWorkflowLegacy] if FullPipelineWorkflowLegacy else []),
-            NewArchitectureWorkflow,
             SmartIngestWorkflow,
         ],
         activities=[
@@ -203,8 +199,6 @@ async def main() -> None:
             crop_buffer,
             merge_tiles,
             download_dataset_version_artifact,
-            cluster_scan_custom,
-            update_pipeline_status,
         ],
     )
 
