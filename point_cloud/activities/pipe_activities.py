@@ -180,7 +180,8 @@ async def reproject_scan_to_target_crs(
             s3.download_file(S3Ref(cloud.s3_bucket, cloud.s3_key), str(local_in))
 
             # reproject cloud
-            local_out = td / f"{local_in.stem}__{out_srs.replace(':', '_')}{local_in.suffix}"
+            safe_srs = re.sub(r"[^\w.\-]", "_", out_srs)
+            local_out = td / f"{local_in.stem}__{safe_srs}{local_in.suffix}"
             pdal_meta, point_count = _reproject_cloud_with_pdal(local_in, local_out, in_srs, out_srs)
 
             # upload derived cloud

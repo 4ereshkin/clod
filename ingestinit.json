@@ -1,0 +1,147 @@
+{
+  "workflow_id": "a123",
+  "scenario": "ingest",
+  "version":
+  {
+    "message_version": "0",
+    "pipeline_version": "1"
+  },
+  "dataset":
+  {
+    "scan1":
+      {
+        "control_point": {
+    "1": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    },
+    "2": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    },
+    "3": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    }
+  },
+        "trajectory": {
+    "1": {
+      "s3_key": "blabla",
+      "etag": "ssss"
+    },
+    "2": {
+      "s3_key": "blabla",
+      "etag": "ssss"
+    },
+    "3": {
+      "s3_key": "blabla",
+      "etag": "ssss"
+    }
+  },
+        "point_cloud": {
+    "1": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    },
+    "2": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    },
+    "3": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    }
+  }
+      },
+    "scan2":
+      {
+        "control_point": {
+    "1": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    },
+    "2": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    },
+    "3": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    }
+  },
+        "trajectory": {
+    "1": {
+      "s3_key": "blabla",
+      "etag": "ssss"
+    },
+    "2": {
+      "s3_key": "blabla",
+      "etag": "ssss"
+    },
+    "3": {
+      "s3_key": "blabla",
+      "etag": "ssss"
+    }
+  },
+        "point_cloud": {
+    "1": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    },
+    "2": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    },
+    "3": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    }
+  }
+      },
+    "scan3":
+      {
+        "control_point": {
+    "1": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    },
+    "2": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    },
+    "3": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    }
+  },
+        "trajectory": {
+    "1": {
+      "s3_key": "blabla",
+      "etag": "ssss"
+    },
+    "2": {
+      "s3_key": "blabla",
+      "etag": "ssss"
+    },
+    "3": {
+      "s3_key": "blabla",
+      "etag": "ssss"
+    }
+  },
+        "point_cloud": {
+    "1": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    },
+    "2": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    },
+    "3": {
+      "s3_key": "blabla",
+      "etag": "blabla"
+    }
+  }
+      }
+  }
+}

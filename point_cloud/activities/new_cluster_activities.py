@@ -107,7 +107,7 @@ async def cluster_scan_custom(
         import tempfile
         with tempfile.TemporaryDirectory() as td:
             local_dir = Path(td)
-            local_in = download_artifact(s3, art.s3_bucket, art.s3_key, local_dir)
+            local_in = download_artifact(s3=s3, bucket=art.s3_bucket, key=art.s3_key, dst_dir=local_dir)
 
             filename = local_in.name
             safe_out_path = str(local_dir / f"clustered_{filename}")

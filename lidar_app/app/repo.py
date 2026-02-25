@@ -105,10 +105,19 @@ class Repo:
             # первая версия
             dv = DatasetVersion(id=str(ULID()), dataset_id=dataset_id, version=1, is_active=True)
             db.add(dv)
-            # чтобы вернуть уже с заполненными полями (в т.ч. server_default)
-            db.flush()
-            db.expunge(dv)
-            return dv
+            try:
+                db.flush()
+                db.expunge(dv)
+                return dv
+            except IntegrityError:
+                db.rollback()
+                # Параллельный воркер успел вставить первым — перечитаем
+                active = db.execute(
+                    select(DatasetVersion)
+                    .where(DatasetVersion.dataset_id == dataset_id, DatasetVersion.is_active.is_(True))
+                ).scalar_one()
+                db.expunge(active)
+                return active
 
     def bump_dataset_version(self, dataset_id: str) -> DatasetVersion:
         with self.session() as db:
@@ -155,6 +164,11 @@ class Repo:
                 axis_order=axis_order,
                 meta=meta or {},)
             )
+            try:
+                db.flush()
+            except IntegrityError:
+                db.rollback()
+                # Параллельный воркер успел вставить раньше — всё ок, CRS существует
 
     def get_crs(self, crs_id: str):
         with self.session() as db:
