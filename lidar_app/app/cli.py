@@ -1,4 +1,3 @@
-# app/cli.py
 import argparse
 from pathlib import Path
 
