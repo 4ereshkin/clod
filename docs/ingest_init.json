@@ -8,13 +8,14 @@
   "dataset": {
     "<scan_alias_or_id>": {
       "control_point": {
-        "<part_id>": { "s3_key": "string", "etag": "string" }
+        "<local_point>": { "s3_key": "string", "etag": "string", "crs": {} },
+        "<reference_point>": { "s3_key": "string", "etag": "string", "crs": {} }
       },
       "trajectory": {
-        "<part_id>": { "s3_key": "string", "etag": "string" }
+        "<part_id>": { "s3_key": "string", "etag": "string", "crs": {} }
       },
       "point_cloud": {
-        "<part_id>": { "s3_key": "string", "etag": "string" }
+        "<part_id>": { "s3_key": "string", "etag": "string", "crs": {} }
       }
     }
   }

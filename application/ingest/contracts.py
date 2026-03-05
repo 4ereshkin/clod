@@ -11,6 +11,7 @@ from application.common.contracts import (
 class StartIngestObjectRef(BaseModel):
     s3_key: str = Field(min_length=1)
     etag: str = Field(min_length=1)
+    crs: dict[str, Any] | None = Field(default=None)
 
 
 class StartIngestScanPayload(BaseModel):
