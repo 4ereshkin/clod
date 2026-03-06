@@ -1,47 +1,36 @@
 import asyncio
 import logging
-from contextlib import AsyncExitStack
 
-from aio_pika import connect_robust, IncomingMessage
-from redis.asyncio import from_url
-from temporalio.client import Client
+from aio_pika import IncomingMessage
+from aio_pika.abc import AbstractRobustConnection, AbstractChannel
+from dishka import make_async_container
 
 from application.ingest.use_case import StartIngestUseCase
-from env_vars import settings
-from infrastructure.ingest.keydb_adapter import KeyDbStatusStore
-from infrastructure.ingest.rabbit_adapter import RabbitEventPublisher
-from infrastructure.ingest.temporal_adapter import TemporalAdapter
+from infrastructure.providers import InfrastructureProvider, ApplicationProvider
 from interfaces.ingest.dto import IngestStartMessageDTO
 from interfaces.ingest.mappers import to_start_command
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 async def main():
-    async with AsyncExitStack() as stack:
-        # 1. Infrastructure (Connections)
-        redis = await stack.enter_async_context(
-            from_url(settings.keydb_dsn, encoding="utf-8", decode_responses=True)
-        )
-        rabbit_conn = await stack.enter_async_context(
-            await connect_robust(settings.rabbit_dsn)
-        )
-        channel = await stack.enter_async_context(
-            await rabbit_conn.channel()
-        )
-        ingest_exchange = await channel.get_exchange('ingest', ensure=False)
+    # 1. Создаем DI Контейнер. Dishka сама инициализирует пулы и соединения при их первом запросе
+    container = make_async_container(
+        InfrastructureProvider(),
+        ApplicationProvider()
+    )
 
-        temporal_client = await Client.connect(settings.temporal_dsn)
+    try:
+        # 2. Достаем готовый Use Case из контейнера.
+        # Dishka сама найдет Redis, RabbitMQ, Temporal, соберет адаптеры и передаст их в Use Case!
+        ingest_uc = await container.get(StartIngestUseCase)
 
-        # 2. Adapters & Use Cases - Ingest
-        ingest_status_store = KeyDbStatusStore(redis)
-        ingest_publisher = RabbitEventPublisher(ingest_exchange)
-        ingest_temporal = TemporalAdapter(temporal_client)
-        ingest_uc = StartIngestUseCase(ingest_temporal, ingest_status_store, ingest_publisher)
+        # 3. Нам нужно подключение к RabbitMQ только для того, чтобы слушать очередь (Consumer)
+        rabbit_conn = await container.get(AbstractRobustConnection)
+        channel: AbstractChannel = await rabbit_conn.channel()
 
-        # 3. Consumers
-
-        # 3.1 Ingest Queue
+        # 4. Настраиваем Consumer
         ingest_queue = await channel.declare_queue('ingest.start', durable=True)
 
         async def process_ingest(message: IncomingMessage):
@@ -50,14 +39,27 @@ async def main():
                     payload = IngestStartMessageDTO.model_validate_json(message.body)
                     command = to_start_command(payload)
                     logger.info(f"Starting ingest workflow {command.workflow_id}")
+
+                    # Запускаем наш Use Case!
                     await ingest_uc.execute(command)
+
                 except Exception as e:
                     logger.error(f"Failed to process ingest: {e}", exc_info=True)
 
+        # Начинаем слушать очередь
         await ingest_queue.consume(process_ingest)
 
         logger.info("Worker started. Waiting for messages...")
+
+        # Бесконечный цикл, пока не придет сигнал остановки (Ctrl+C)
         await asyncio.Future()
+
+    finally:
+        # 5. При остановке приложения Dishka КОРРЕКТНО закроет все соединения
+        # (вызовет aclose() у Redis, close() у RabbitMQ, закроет пулы и т.д.)
+        logger.info("Closing container and connections...")
+        await container.close()
+
 
 if __name__ == "__main__":
     try:

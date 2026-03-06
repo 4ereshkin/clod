@@ -37,7 +37,7 @@ class S3Client:
         ) as client:
             yield client
 
-    def _calc_md5(self, file_path: str) -> tuple[str, str]:
+    def calc_md5(self, file_path: str) -> tuple[str, str]:
         # MD5 файла, возврат - (hex-строка, base64-строка)
         hash_md5 = hashlib.md5()
         with open(file_path, 'rb') as file:
@@ -62,7 +62,7 @@ class S3Client:
                 if not local_file_path:
                     return True
 
-                local_md5_hex, _ = self._calc_md5(local_file_path)
+                local_md5_hex, _ = self.calc_md5(local_file_path)
 
                 # ВНИМАНИЕ: Если файл в S3 был загружен как Multipart, этот ETag не совпадет с MD5!
                 # Для Multipart ETag выглядит как "md5-N".
@@ -93,7 +93,7 @@ class S3Client:
         async with self.get_client() as client:
             if file_size < MULTIPART_THRESHOLD:
 
-                _, md5_base64 = self._calc_md5(file_path)
+                _, md5_base64 = self.calc_md5(file_path)
 
                 with open(file_path, 'rb') as file_data:
                     await client.put_object(

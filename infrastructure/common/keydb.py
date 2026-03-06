@@ -1,6 +1,6 @@
 import json
 from typing import Any
-from redis.asyncio import Redis
+from aioredis import Redis
 
 
 class KeyDbStatusStore:
@@ -9,6 +9,8 @@ class KeyDbStatusStore:
         self.ttl = 86400
         self.prefix = prefix
 
+    async def close(self) -> None:
+        await self.redis.close()
 
     async def set_status(self, *, workflow_id: str,
                          status: str, payload: dict[str, Any]) -> None:
