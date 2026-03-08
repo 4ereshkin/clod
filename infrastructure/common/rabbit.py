@@ -5,9 +5,8 @@ from aio_pika.abc import AbstractChannel
 
 
 from application.common.interfaces import EventPublisher
-from application.ingest.contracts import ScenarioResult
-from application.common.contracts import StatusEvent, FailedEvent
 
+from application.common.contracts import StatusEvent, FailedEvent, ScenarioResult
 from interfaces.ingest.mappers import to_completed_event, to_failed_event, to_status_dto
 
 

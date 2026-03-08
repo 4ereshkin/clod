@@ -5,7 +5,7 @@ from aio_pika import IncomingMessage
 from aio_pika.abc import AbstractRobustConnection, AbstractChannel
 from dishka import make_async_container
 
-from application.ingest.use_case import StartIngestUseCase
+from application.common.use_case import StartUseCase
 from infrastructure.providers import InfrastructureProvider, ApplicationProvider
 from interfaces.ingest.dto import IngestStartMessageDTO
 from interfaces.ingest.mappers import to_start_command
@@ -24,7 +24,7 @@ async def main():
     try:
         # 2. Достаем готовый Use Case из контейнера.
         # Dishka сама найдет Redis, RabbitMQ, Temporal, соберет адаптеры и передаст их в Use Case!
-        ingest_uc = await container.get(StartIngestUseCase)
+        start_uc = await container.get(StartUseCase)
 
         # 3. Нам нужно подключение к RabbitMQ только для того, чтобы слушать очередь (Consumer)
         rabbit_conn = await container.get(AbstractRobustConnection)
@@ -41,7 +41,7 @@ async def main():
                     logger.info(f"Starting ingest workflow {command.workflow_id}")
 
                     # Запускаем наш Use Case!
-                    await ingest_uc.execute(command)
+                    await start_uc.execute(command)
 
                 except Exception as e:
                     logger.error(f"Failed to process ingest: {e}", exc_info=True)

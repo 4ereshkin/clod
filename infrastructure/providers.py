@@ -9,7 +9,7 @@ from aioredis import Redis, from_url
 from temporalio.client import Client
 
 from application.common.interfaces import TemporalGateway, StatusStore, EventPublisher
-from application.ingest.use_case import StartIngestUseCase
+from application.common.use_case import StartUseCase
 from env_vars import settings
 from infrastructure.ingest.keydb_adapter import KeyDbStatusStore
 from infrastructure.ingest.rabbit_adapter import RabbitEventPublisher
@@ -71,29 +71,6 @@ class ApplicationProvider(Provider):
     event_publisher = alias(source=RabbitEventPublisher, provides=EventPublisher)
     temporal_gateway = alias(source=TemporalAdapter, provides=TemporalGateway)
 
-    @provide(scope=Scope.APP)
-    def provide_start_ingest_use_case(
-            self,
-            temporal: TemporalGateway,
-            status_store: StatusStore,
-            publisher: EventPublisher
-    ) -> StartIngestUseCase:
-        return StartIngestUseCase(
-            temporal=temporal,
-            status_store=status_store,
-            publisher=publisher
-        )
+    start_use_case = provide(StartUseCase, scope=Scope.APP)
 
-    # Добавлен провайдер для IngestActivitiesV1
-    @provide(scope=Scope.APP)
-    def provide_ingest_activities(
-        self,
-        s3_client: S3Client,
-        publisher: EventPublisher,
-        status_store: StatusStore
-    ) -> IngestActivitiesV1:
-        return IngestActivitiesV1(
-            s3_client=s3_client,
-            publisher=publisher,
-            status_store=status_store
-        )
+    ingest_activities_v1 = provide(IngestActivitiesV1, scope=Scope.APP)

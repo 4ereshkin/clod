@@ -4,7 +4,6 @@ import time
 from typing import Any
 
 from application.ingest.contracts import (
-    ScenarioResult,
     StartIngestCommand,
     StartIngestObjectRef,
     StartIngestScanPayload
@@ -12,7 +11,8 @@ from application.ingest.contracts import (
 from application.common.contracts import (
     StatusEvent,
     FailedEvent,
-    WorkflowStatus
+    WorkflowStatus,
+    ScenarioResult,
 )
 
 from interfaces.ingest.dto import (

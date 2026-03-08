@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from application.ingest.contracts import ScenarioSpec
+from application.common.contracts import ScenarioSpec
 from shared.workflows.catalog import *
 
 REGISTRY: dict[tuple[str, str], ScenarioSpec] = {

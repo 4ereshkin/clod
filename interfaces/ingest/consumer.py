@@ -1,11 +1,11 @@
 from aio_pika import IncomingMessage
-from application.ingest.use_case import StartIngestUseCase
+from application.common.use_case import StartUseCase
 from interfaces.ingest.dto import IngestStartMessageDTO
 from interfaces.ingest.mappers import to_start_command
 
 
 class IngestConsumer:
-    def __init__(self, use_case: StartIngestUseCase):
+    def __init__(self, use_case: StartUseCase):
         self.use_case = use_case
 
 
