@@ -2,7 +2,7 @@ import os
 import asyncio
 from typing import Any, AsyncGenerator, Callable
 
-from legacy_env_vars import settings, Settings # Импортируем и класс, и сам объект
+from application.common.config import AppSettings
 
 import aio_pika
 from aio_pika.abc import AbstractRobustConnection, AbstractChannel
@@ -19,25 +19,24 @@ from infrastructure.common.signalr import SignalREventPublisher
 from infrastructure.ingest.keydb_adapter import KeyDbStatusStore
 from infrastructure.ingest.rabbit_adapter import RabbitEventPublisher
 from infrastructure.ingest.temporal_adapter import TemporalAdapter
-from infrastructure.infrastructure_config import S3Config
 from infrastructure.s3 import S3Client
 from point_cloud.activities.ingest_activities_v1 import IngestActivitiesV1
 
 
 class InfrastructureProvider(Provider):
     @provide(scope=Scope.APP)
-    def get_settings(self) -> Settings:
-        return settings
+    def get_settings(self) -> AppSettings:
+        return AppSettings()
 
     @provide(scope=Scope.APP)
-    async def get_redis_client(self, config: Settings) -> AsyncGenerator[Redis, Any]:
-        client = from_url(config.keydb_dsn, encoding="utf-8", decode_responses=True)
+    async def get_redis_client(self, config: AppSettings) -> AsyncGenerator[Redis, Any]:
+        client = from_url(config.keydb.dsn, encoding="utf-8", decode_responses=True)
         yield client
         await client.aclose()
 
     @provide(scope=Scope.APP)
-    async def get_rabbit_connection(self, config: Settings) -> AsyncGenerator[AbstractRobustConnection, Any]:
-        connection = await aio_pika.connect_robust(config.rabbit_dsn)
+    async def get_rabbit_connection(self, config: AppSettings) -> AsyncGenerator[AbstractRobustConnection, Any]:
+        connection = await aio_pika.connect_robust(config.rabbitmq.dsn)
         yield connection
         await connection.close()
 
@@ -49,14 +48,13 @@ class InfrastructureProvider(Provider):
         return Pool(get_channel, max_size=10)
 
     @provide(scope=Scope.APP)
-    async def get_temporal_client(self, config: Settings) -> Client:
-        return await Client.connect(config.temporal_dsn)
+    async def get_temporal_client(self, config: AppSettings) -> Client:
+        return await Client.connect(config.temporal.dsn)
 
     # Добавлен провайдер для S3Client
     @provide(scope=Scope.APP)
-    def get_s3_client(self) -> S3Client:
-        s3_config = S3Config(**os.environ)
-        return S3Client(s3_config)
+    def get_s3_client(self, config: AppSettings) -> S3Client:
+        return S3Client(config.s3)
 
     # --- INGEST ---
 
@@ -65,7 +63,7 @@ class InfrastructureProvider(Provider):
         return KeyDbStatusStore(redis_client=redis)
 
     @provide(scope=Scope.APP)
-    def get_rabbit_publisher(self, channel_pool: Pool[AbstractChannel], config: Settings) -> RabbitEventPublisher:
+    def get_rabbit_publisher(self, channel_pool: Pool[AbstractChannel], config: AppSettings) -> RabbitEventPublisher:
         return RabbitEventPublisher(channel_pool=channel_pool)
 
     @provide(scope=Scope.APP)
@@ -77,7 +75,7 @@ class InfrastructureProvider(Provider):
                                      )
 
     @provide(scope=Scope.APP)
-    def get_signalr_connection(self, config: Settings) -> BaseHubConnection:
+    def get_signalr_connection(self, config: AppSettings) -> BaseHubConnection:
         hub_connection = HubConnectionBuilder().with_url(config.signalr_hub_url).build()
         hub_connection.start()
         return hub_connection
@@ -87,7 +85,7 @@ class InfrastructureProvider(Provider):
     async def get_event_publisher(self,
                                   rabbit: RabbitEventPublisher,
                                   signalr: SignalREventPublisher,
-                                  config: Settings) -> EventPublisher:
+                                  config: AppSettings) -> EventPublisher:
         if config.event_transport == "signalr":
             return signalr
         return rabbit

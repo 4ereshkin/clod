@@ -10,7 +10,8 @@ import pdal
 from temporalio import activity
 
 from lidar_app.app.repo import Repo
-from legacy_env_vars import settings
+from application.common.config import get_settings
+
 from lidar_app.app.s3_store import S3Store, S3Ref
 
 
@@ -76,10 +77,10 @@ async def export_merged_laz(
     def _run() -> Dict[str, Any]:
         repo = Repo()
         s3 = S3Store(
-            settings.s3_endpoint,
-            settings.s3_access_key,
-            settings.s3_secret_key,
-            settings.s3_region,
+            get_settings().s3.endpoint,
+            get_settings().s3.access_key,
+            get_settings().s3.secret_key,
+            get_settings().s3.region,
         )
 
         scans = repo.list_scans_by_dataset_version(dataset_version_id)
@@ -180,7 +181,7 @@ async def export_merged_laz(
                 f"derived/v{schema_version}/merged/point_cloud/{out_local.name}"
             )
 
-            etag, size = s3.upload_file(S3Ref(settings.s3_bucket, out_key), str(out_local))
+            etag, size = s3.upload_file(S3Ref(get_settings().s3.bucket, out_key), str(out_local))
 
             # ВОТ СЮДА
             anchor_scan_id = scans[0].id
@@ -189,7 +190,7 @@ async def export_merged_laz(
                 scan_id=anchor_scan_id,
                 kind="derived.merged_point_cloud",
                 schema_version=schema_version,
-                s3_bucket=settings.s3_bucket,
+                s3_bucket=get_settings().s3.bucket,
                 s3_key=out_key,
                 etag=etag,
                 size_bytes=size,
@@ -202,7 +203,7 @@ async def export_merged_laz(
             )
 
             return {
-                "bucket": settings.s3_bucket,
+                "bucket": get_settings().s3.bucket,
                 "key": out_key,
                 "etag": etag,
                 "size_bytes": size,

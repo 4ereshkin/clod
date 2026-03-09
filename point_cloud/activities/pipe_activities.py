@@ -12,7 +12,8 @@ from botocore.exceptions import ClientError
 from temporalio import activity
 
 from lidar_app.app.repo import Repo
-from legacy_env_vars import settings
+from application.common.config import get_settings
+
 from lidar_app.app.s3_store import S3Store, S3Ref, derived_manifest_key, scan_prefix
 from lidar_app.app.artifact_service import download_artifact, store_artifact
 
@@ -121,10 +122,10 @@ async def load_ingest_manifest(company_id: str, dataset_version_id: str, scan_id
     Читает ingest_manifest.json из S3 и возвращает dict.
     """
     def _run() -> Dict[str, Any]:
-        s3 = S3Store(settings.s3_endpoint, settings.s3_access_key, settings.s3_secret_key, settings.s3_region)
+        s3 = S3Store(get_settings().s3.endpoint, get_settings().s3.access_key, get_settings().s3.secret_key, get_settings().s3.region)
         prefix = scan_prefix(company_id, dataset_version_id, scan_id)
         key = derived_manifest_key(prefix, schema_version)
-        data = s3.get_bytes(S3Ref(settings.s3_bucket, key))
+        data = s3.get_bytes(S3Ref(get_settings().s3.bucket, key))
         return json.loads(data.decode("utf-8"))
 
     return await asyncio.to_thread(_run)
@@ -157,7 +158,7 @@ async def reproject_scan_to_target_crs(
     def _run():
 
         repo = Repo()
-        s3 = S3Store(settings.s3_endpoint, settings.s3_access_key, settings.s3_secret_key, settings.s3_region)
+        s3 = S3Store(get_settings().s3.endpoint, get_settings().s3.access_key, get_settings().s3.secret_key, get_settings().s3.region)
 
         scan = repo.get_scan(scan_id)
 
@@ -195,7 +196,7 @@ async def reproject_scan_to_target_crs(
                 scan_id=scan_id,
                 kind="derived.reprojected_point_cloud",
                 schema_version=schema_version,
-                bucket=settings.s3_bucket,
+                bucket=get_settings().s3.bucket,
                 key=derived_cloud_key,
                 local_file_path=str(local_out),
                 status="AVAILABLE",
@@ -230,7 +231,7 @@ async def reproject_scan_to_target_crs(
                     scan_id=scan_id,
                     kind=kind,
                     schema_version=schema_version,
-                    bucket=settings.s3_bucket,
+                    bucket=get_settings().s3.bucket,
                     key=out_key,
                     data=body,
                     content_type="text/plain",
@@ -265,7 +266,7 @@ async def build_registration_anchors(
     """
     def _run() -> Dict[str, Any]:
         repo = Repo()
-        s3 = S3Store(settings.s3_endpoint, settings.s3_access_key, settings.s3_secret_key, settings.s3_region)
+        s3 = S3Store(get_settings().s3.endpoint, get_settings().s3.access_key, get_settings().s3.secret_key, get_settings().s3.region)
 
         prefix = scan_prefix(company_id, dataset_version_id, scan_id)
 
@@ -305,7 +306,7 @@ async def build_registration_anchors(
             scan_id=scan_id,
             kind="derived.registration_anchors",
             schema_version=schema_version,
-            bucket=settings.s3_bucket,
+            bucket=get_settings().s3.bucket,
             key=key,
             data=body,
             content_type="application/json",
@@ -331,7 +332,7 @@ async def propose_registration_edges(
     """
     def _run() -> Dict[str, Any]:
         repo = Repo()
-        s3 = S3Store(settings.s3_endpoint, settings.s3_access_key, settings.s3_secret_key, settings.s3_region)
+        s3 = S3Store(get_settings().s3.endpoint, get_settings().s3.access_key, get_settings().s3.secret_key, get_settings().s3.region)
 
         scans = repo.list_scans_by_dataset_version(dataset_version_id)
         scans_other = [s for s in scans if s.id != scan_id]
@@ -405,7 +406,7 @@ async def propose_registration_edges(
             scan_id=scan_id,
             kind="derived.registration_edges",
             schema_version=schema_version,
-            bucket=settings.s3_bucket,
+            bucket=get_settings().s3.bucket,
             key=key,
             data=body,
             content_type="application/json",
@@ -547,7 +548,7 @@ async def compute_icp_edge(
     """
     def _run() -> Dict[str, Any]:
         repo = Repo()
-        s3 = S3Store(settings.s3_endpoint, settings.s3_access_key, settings.s3_secret_key, settings.s3_region)
+        s3 = S3Store(get_settings().s3.endpoint, get_settings().s3.access_key, get_settings().s3.secret_key, get_settings().s3.region)
 
         b1, k1 = _get_reprojected_cloud_key(repo, scan_id_from, schema_version)
         b2, k2 = _get_reprojected_cloud_key(repo, scan_id_to, schema_version)

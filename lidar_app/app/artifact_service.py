@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from legacy_env_vars import settings
+from application.common.config import get_settings
+
 from lidar_app.app.repo import Repo
 from lidar_app.app.s3_store import S3Ref, S3Store, raw_cloud_key, raw_control_point_key, raw_path_key, scan_prefix
 
@@ -181,9 +182,9 @@ class ArtifactService:
 
 
 def build_artifact_service() -> ArtifactService:
-    s3 = S3Store(settings.s3_endpoint, settings.s3_access_key, settings.s3_secret_key, settings.s3_region)
+    s3 = S3Store(get_settings().s3.endpoint, get_settings().s3.access_key, get_settings().s3.secret_key, get_settings().s3.region)
     repo = Repo()
-    return ArtifactService(repo=repo, s3=s3, bucket=settings.s3_bucket)
+    return ArtifactService(repo=repo, s3=s3, bucket=get_settings().s3.bucket)
 
 
 def store_artifact(

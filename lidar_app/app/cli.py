@@ -4,7 +4,8 @@ from pathlib import Path
 from lidar_app.app.repo import Repo
 from lidar_app.app.s3_store import S3Store
 from lidar_app.app.artifact_service import store_artifact
-from legacy_env_vars import settings
+from application.common.config import get_settings
+
 
 
 
@@ -92,7 +93,7 @@ def main():
         return
 
     if args.cmd == "upload-raw":
-        s3 = S3Store(settings.s3_endpoint, settings.s3_access_key, settings.s3_secret_key, settings.s3_region)
+        s3 = S3Store(get_settings().s3.endpoint, get_settings().s3.access_key, get_settings().s3.secret_key, get_settings().s3.region)
 
         scan = repo.get_scan(args.scan)
         if scan.company_id != args.company:
@@ -105,7 +106,7 @@ def main():
             scan_id=args.scan,
             kind="raw.point_cloud",
             local_file_path=args.cloud,
-            bucket=settings.s3_bucket,
+            bucket=get_settings().s3.bucket,
             dataset_version_id=scan.dataset_version_id,
         )
         print("OK raw cloud:", cloud["key"])
@@ -119,7 +120,7 @@ def main():
                 scan_id=args.scan,
                 kind="raw.trajectory",
                 local_file_path=args.path,
-                bucket=settings.s3_bucket,
+                bucket=get_settings().s3.bucket,
                 dataset_version_id=scan.dataset_version_id,
                 filename=Path(args.path).name,
             )
@@ -134,7 +135,7 @@ def main():
                 scan_id=args.scan,
                 kind="raw.control_point",
                 local_file_path=args.cp,
-                bucket=settings.s3_bucket,
+                bucket=get_settings().s3.bucket,
                 dataset_version_id=scan.dataset_version_id,
                 filename=Path(args.cp).name,
             )

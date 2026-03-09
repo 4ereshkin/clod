@@ -10,7 +10,8 @@ import pdal
 from temporalio import activity
 
 from lidar_app.app.artifact_service import download_artifact, store_artifact
-from legacy_env_vars import settings
+from application.common.config import get_settings
+
 from lidar_app.app.repo import Repo
 from lidar_app.app.s3_store import S3Store, scan_prefix
 
@@ -71,10 +72,10 @@ async def preprocess_point_cloud(
     def _run() -> Dict[str, Any]:
         repo = Repo()
         s3 = S3Store(
-            settings.s3_endpoint,
-            settings.s3_access_key,
-            settings.s3_secret_key,
-            settings.s3_region,
+            get_settings().s3.endpoint,
+            get_settings().s3.access_key,
+            get_settings().s3.secret_key,
+            get_settings().s3.region,
         )
 
         inp_art = _resolve_input_artifact(repo, scan_id, schema_version, input_kind)
@@ -141,7 +142,7 @@ async def preprocess_point_cloud(
                 scan_id=scan_id,
                 kind=output_kind,
                 schema_version=schema_version,
-                bucket=settings.s3_bucket,
+                bucket=get_settings().s3.bucket,
                 key=out_key,
                 local_file_path=str(local_out),
                 status="READY",
@@ -152,7 +153,7 @@ async def preprocess_point_cloud(
 
         return {
             "kind": output_kind,
-            "s3_bucket": settings.s3_bucket,
+            "s3_bucket": get_settings().s3.bucket,
             "s3_key": out_key,
             "etag": result["etag"],
             "size_bytes": result["size_bytes"],
