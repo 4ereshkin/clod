@@ -1,6 +1,6 @@
-# S3 gate tests (SeaweedFS/MinIO compatibility)
+# S3 gate tests (SeaweedFS compatibility)
 
-Цель: быстрый, детерминированный чек S3‑совместимости перед переключением endpoint.
+Цель: быстрый, детерминированный чек S3‑совместимости.
 
 ## Подготовка .env
 
@@ -13,8 +13,6 @@ S3_SECRET_KEY=admin
 S3_BUCKET=lidar-data
 S3_REGION=us-east-1
 ```
-
-Если не заданы `S3_*`, то используется MinIO (`MINIO_PORT`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`).
 
 ## Запуск
 

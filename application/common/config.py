@@ -21,9 +21,9 @@ class PostgresSettings(BaseModel):
 
 class S3Settings(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
-    endpoint: str = Field(alias="S3_ENDPOINT", default="http://127.0.0.1:9000")
-    access_key: str = Field(alias="S3_ACCESS_KEY", default="minioadmin")
-    secret_key: str = Field(alias="S3_SECRET_KEY", default="minioadmin")
+    endpoint: str = Field(alias="S3_ENDPOINT", default="http://127.0.0.1:8333")
+    access_key: str = Field(alias="S3_ACCESS_KEY", default="admin")
+    secret_key: str = Field(alias="S3_SECRET_KEY", default="admin")
     bucket: str = Field(alias="S3_BUCKET", default="lidar-data")
     region: str = Field(alias="S3_REGION", default="us-east-1")
 
@@ -57,9 +57,9 @@ class AppSettings(BaseSettings):
     pg_port: int = Field(alias="PGAPP_DB_PORT", default=5432)
     pg_db_name: str = Field(alias="PGAPP_DB_NAME", default="lidar_db")
 
-    s3_endpoint: str = Field(alias="S3_ENDPOINT", default="http://127.0.0.1:9000")
-    s3_access_key: str = Field(alias="S3_ACCESS_KEY", default="minioadmin")
-    s3_secret_key: str = Field(alias="S3_SECRET_KEY", default="minioadmin")
+    s3_endpoint: str = Field(alias="S3_ENDPOINT", default="http://127.0.0.1:8333")
+    s3_access_key: str = Field(alias="S3_ACCESS_KEY", default="admin")
+    s3_secret_key: str = Field(alias="S3_SECRET_KEY", default="admin")
     s3_bucket: str = Field(alias="S3_BUCKET", default="lidar-data")
     s3_region: str = Field(alias="S3_REGION", default="us-east-1")
 
