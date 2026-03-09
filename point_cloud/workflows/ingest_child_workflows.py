@@ -4,6 +4,7 @@ import os
 import asyncio
 from dataclasses import dataclass
 from datetime import timedelta
+from pathlib import Path
 from typing import List, Dict, Any
 
 from temporalio import workflow
@@ -62,18 +63,22 @@ class IngestProfilingWorkflow:
     async def run(self, params: ProfilingWorkflowParams) -> Dict[str, dict[str, str]]:
         rp_fast = RetryPolicy(maximum_attempts=3)
 
-        # Формируем пути
-        cloud_path = params.local_cloud_path
-        base_dir = cloud_path.rsplit('/', 1)[0]
-        base_name = cloud_path.rsplit('/', 1)[-1].split('.')[0]
+        # Формируем пути с помощью pathlib и ОБЯЗАТЕЛЬНО конвертируем обратно в str
+        cloud_path_obj = Path(params.local_cloud_path)
+        base_dir = cloud_path_obj.parent
+        base_name = cloud_path_obj.stem
 
-        local_meta = f"{base_dir}/{base_name}_meta.json"
-        local_hexbin = f"{base_dir}/{base_name}_hexbin.geojson"
-        local_stats = f"{base_dir}/{base_name}_stats.json"
+        local_meta = str(base_dir / f"{base_name}_meta.json")
+        local_hexbin = str(base_dir / f"{base_name}_hexbin.geojson")
+        local_stats = str(base_dir / f"{base_name}_stats.json")
+
+        # Так как cloud_path_obj - это Path, а нам нужна строка,
+        # можно передавать params.local_cloud_path (так как это строка)
+        cloud_path_str = params.local_cloud_path
 
         meta_dict = await workflow.execute_activity(
             "point_cloud_meta",
-            args=[cloud_path, local_hexbin],
+            args=[cloud_path_str, local_hexbin],
             start_to_close_timeout=timedelta(minutes=30),
             retry_policy=rp_fast,
         )
@@ -87,7 +92,7 @@ class IngestProfilingWorkflow:
 
         await workflow.execute_activity(
             "compute_point_cloud_stats",
-            args=[cloud_path, local_stats],
+            args=[cloud_path_str, local_stats],
             start_to_close_timeout=timedelta(minutes=30),
             retry_policy=rp_fast,
         )

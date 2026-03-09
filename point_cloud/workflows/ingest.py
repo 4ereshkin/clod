@@ -8,14 +8,16 @@ from datetime import timedelta
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
+
 from shared.workflows.catalog import INGEST_V1
 
 with workflow.unsafe.imports_passed_through():
     from point_cloud.workflows.ingest_child_workflows import (
-    DownloadWorkflowParams, DownloadRequest,
-    ProfilingWorkflowParams,
-    ReprojectWorkflowParams,
+        DownloadWorkflowParams, DownloadRequest,
+        ProfilingWorkflowParams,
+        ReprojectWorkflowParams,
     )
+    from application.common.contracts import StatusEvent, WorkflowStatus, ResultObject, ScenarioResult
 
 TARGET_CRS = "EPSG:4326"
 
@@ -40,6 +42,24 @@ class IngestWorkflow:
         rp_fast = RetryPolicy(maximum_attempts=3)
         rp_long = RetryPolicy(maximum_attempts=2)
 
+        workflow_id = payload.get('workflow_id', workflow.info().workflow_id)
+        scenario = payload.get("scenario", "ingest")
+
+        running_event = StatusEvent(
+            workflow_id=workflow_id,
+            scenario=scenario,
+            status=WorkflowStatus.RUNNING,
+            details={"message": "Ingest workflow started"},
+            timestamp=workflow.now().timestamp()  # <-- Добавь эту строку!
+        )
+
+        await workflow.execute_activity(
+            "publish_status_activity",
+            args=[running_event.model_dump(mode='json')],
+            start_to_close_timeout=timedelta(seconds=10),
+            retry_policy=RetryPolicy(maximum_attempts=3)
+        )
+
         dataset = payload.get('dataset', {})
         scan_count = len(dataset)
 
@@ -53,7 +73,6 @@ class IngestWorkflow:
             'scans': {}
         }
 
-        workflow_id = payload.get('workflow_id', workflow.info().workflow_id)
         base_work_dir = f'/tmp/ingest/{workflow_id}'
 
         self._stage = 'Preparing downloads'
@@ -167,6 +186,30 @@ class IngestWorkflow:
             self._results.append({"kind": "manifest", **manifest_upload_result})
 
             self._stage = "Completed"
+
+            outputs = []
+            for res in self._results:
+                outputs.append(ResultObject(
+                    kind=res.get("kind", "unknown"),
+                    s3_key=res.get("s3_key", ""),
+                    etag=res.get("etag", "")
+                ))
+
+            completed_event = ScenarioResult(
+                workflow_id=workflow_id,
+                scenario=scenario,
+                status=WorkflowStatus.COMPLETED,
+                outputs=outputs,
+                details={"manifest": manifest_data},
+                timestamp=workflow.now().timestamp()  # <-- И эту строку здесь!
+            )
+
+            await workflow.execute_activity(
+                "publish_completed_activity",
+                args=[completed_event.model_dump(mode='json')],
+                start_to_close_timeout=timedelta(seconds=10),
+                retry_policy=RetryPolicy(maximum_attempts=3)
+            )
 
             return {
                 "outputs": self._results,  # Это попадёт в ScenarioResult.outputs

@@ -7,6 +7,7 @@ import pdal
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
+from application.common.contracts import StatusEvent, ScenarioResult, FailedEvent
 from infrastructure.s3 import S3Client
 from application.common.interfaces import EventPublisher, StatusStore
 
@@ -153,3 +154,46 @@ class IngestActivitiesV1:
 
         if not local_out.exists():
             raise RuntimeError(f'PDAL reprojection pipeline produced no output: {local_out}')
+
+        return str(local_out)
+
+    @activity.defn
+    async def publish_status_activity(self, status_data: dict) -> None:
+        # Конвертируем сырой словарь из Temporal обратно в Pydantic модель
+        event = StatusEvent.model_validate(status_data)
+
+        # Сохраняем в KeyDB
+        await self.status_store.set_status(
+            workflow_id=event.workflow_id,
+            status=event.status.value,
+            payload=status_data
+        )
+
+        # Отправляем в RabbitMQ
+        await self.publisher.publish_status(event)
+
+    @activity.defn
+    async def publish_completed_activity(self, result_data: dict) -> None:
+        event = ScenarioResult.model_validate(result_data)
+
+        # Обновляем статус в KeyDB
+        await self.status_store.set_status(
+            workflow_id=event.workflow_id,
+            status=event.status.value,
+            payload=result_data
+        )
+
+        # Отправляем событие о завершении
+        await self.publisher.publish_completed(event)
+
+    @activity.defn
+    async def publish_failed_activity(self, failed_data: dict) -> None:
+        event = FailedEvent.model_validate(failed_data)
+
+        await self.status_store.set_status(
+            workflow_id=event.workflow_id,
+            status=event.status.value,
+            payload=failed_data
+        )
+
+        await self.publisher.publish_failed(event)

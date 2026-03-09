@@ -58,6 +58,9 @@ async def main():
                     activities.compute_point_cloud_stats,
                     activities.save_dict_to_json,
                     activities.reproject_to_copc,
+                    activities.publish_status_activity,
+                    activities.publish_completed_activity,
+                    activities.publish_failed_activity,
                 ],
                 activity_executor=activity_executor,
             )

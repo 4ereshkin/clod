@@ -28,7 +28,7 @@ async def send_test_message():
             "scan_001": {
                 "point_cloud": {
                     "part_1": {
-                        "s3_key": "raw/scan_001.las",
+                        "s3_key": "raw/scan_001.laz",
                         "etag": "fake_etag_123"
                     }
                 },
