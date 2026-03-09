@@ -105,6 +105,6 @@ class StartUseCase:
         await self.status_store.set_status(
             workflow_id=command.workflow_id,
             status=status.value,
-            payload=event.model_dump(),
+            payload=event.model_dump(mode='json'),
         )
         await self.publisher.publish_status(event)

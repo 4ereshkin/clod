@@ -2,8 +2,13 @@ import asyncio
 import logging
 from dotenv import load_dotenv
 
+from point_cloud.workflows.ingest_child_workflows import IngestDownloadWorkflow, IngestProfilingWorkflow, \
+    IngestReprojectWorkflow
+
 # ВАЖНО: Загружаем переменные окружения ДО остальных импортов
 load_dotenv()
+
+import concurrent.futures
 
 from temporalio.worker import Worker
 from temporalio.client import Client
@@ -35,25 +40,31 @@ async def main():
 
         # 4. Настраиваем Worker
         # Имя Task Queue должно совпадать с тем, что ты передаешь в UseCase
-        task_queue = "ingest-task-queue"
+        task_queue = "ingest-queue"
 
-        worker = Worker(
-            temporal_client,
-            task_queue=task_queue,
-            workflows=[IngestWorkflow],
-            # Внимание: передаем методы экземпляра класса Activities!
-            activities=[
-                activities.download_s3_object,
-                activities.upload_s3_object,
-                activities.compute_point_cloud_stats,
-                activities.save_dict_to_json,
-                activities.reproject_to_copc,
-            ],
-        )
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as activity_executor:
+            worker = Worker(
+                temporal_client,
+                task_queue=task_queue,
+                workflows=[IngestWorkflow,
+                           IngestDownloadWorkflow,
+                           IngestProfilingWorkflow,
+                           IngestReprojectWorkflow,],
+                # Внимание: передаем методы экземпляра класса Activities!
+                activities=[
+                    activities.point_cloud_meta,
+                    activities.download_s3_object,
+                    activities.upload_s3_object,
+                    activities.compute_point_cloud_stats,
+                    activities.save_dict_to_json,
+                    activities.reproject_to_copc,
+                ],
+                activity_executor=activity_executor,
+            )
 
-        logger.info(f"Ingest Temporal Worker started on queue '{task_queue}'...")
-        # 5. Запускаем воркер (он будет крутиться вечно)
-        await worker.run()
+            logger.info(f"Ingest Temporal Worker started on queue '{task_queue}'...")
+            # 5. Запускаем воркер (он будет крутиться вечно)
+            await worker.run()
 
     finally:
         # 6. При остановке воркера (Ctrl+C), Dishka корректно закроет соединения

@@ -2,7 +2,10 @@ import base64
 import hashlib
 import os
 from contextlib import asynccontextmanager
+
+import botocore
 from aiobotocore.session import get_session
+from botocore.config import Config
 
 from application.common.config import S3Settings
 from typing import Optional
@@ -34,6 +37,7 @@ class S3Client:
             endpoint_url=self._net_params.endpoint,
             aws_access_key_id=self._net_params.access_key,
             aws_secret_access_key=self._net_params.secret_key,
+            config=Config(s3={'addressing_style': 'path'}),
         ) as client:
             yield client
 
@@ -173,9 +177,9 @@ class S3Client:
                     Key=key,
                 )
                 async with response['Body'] as stream:
+                    data = await stream.read()
                     with open(dest_path, 'wb') as file:
-                        async for chunk in stream:
-                            file.write(chunk)
+                        file.write(data)
                 print(f'Downloaded object {key} to {dest_path}.')
             except ClientError as e:
                 print(f'Error occured when downloading object {key} to {dest_path}: {e}.')

@@ -1,6 +1,6 @@
 import json
 from typing import Any
-from aioredis import Redis
+from redis.asyncio import Redis
 
 
 class KeyDbStatusStore:

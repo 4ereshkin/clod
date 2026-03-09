@@ -56,8 +56,8 @@ class ProfilingWorkflowParams:
     hexbin_s3_key: str
     stats_s3_key: str
 
-@workflow.defn(name='IngestProfilingAWorkflow')
-class IngestProfilingAWorkflow:
+@workflow.defn(name='IngestProfilingWorkflow')
+class IngestProfilingWorkflow:
     @workflow.run
     async def run(self, params: ProfilingWorkflowParams) -> Dict[str, dict[str, str]]:
         rp_fast = RetryPolicy(maximum_attempts=3)

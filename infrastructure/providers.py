@@ -1,6 +1,4 @@
-import os
-import asyncio
-from typing import Any, AsyncGenerator, Callable
+from typing import Any, AsyncGenerator
 
 from application.common.config import AppSettings
 
@@ -8,7 +6,7 @@ import aio_pika
 from aio_pika.abc import AbstractRobustConnection, AbstractChannel
 from aio_pika.pool import Pool
 from dishka import Provider, Scope, provide, alias
-from aioredis import Redis, from_url
+from redis.asyncio import Redis, from_url
 from signalrcore.hub_connection_builder import HubConnectionBuilder
 from signalrcore.hub.base_hub_connection import BaseHubConnection
 from temporalio.client import Client
@@ -30,13 +28,18 @@ class InfrastructureProvider(Provider):
 
     @provide(scope=Scope.APP)
     async def get_redis_client(self, config: AppSettings) -> AsyncGenerator[Redis, Any]:
+        print('connecting to keydb')
         client = from_url(config.keydb.dsn, encoding="utf-8", decode_responses=True)
+        await client.ping()
+        print('connected to keydb')
         yield client
         await client.aclose()
 
     @provide(scope=Scope.APP)
     async def get_rabbit_connection(self, config: AppSettings) -> AsyncGenerator[AbstractRobustConnection, Any]:
+        print('connecting to rabbit')
         connection = await aio_pika.connect_robust(config.rabbitmq.dsn)
+        print('connected to rabbit')
         yield connection
         await connection.close()
 
@@ -49,7 +52,10 @@ class InfrastructureProvider(Provider):
 
     @provide(scope=Scope.APP)
     async def get_temporal_client(self, config: AppSettings) -> Client:
-        return await Client.connect(config.temporal.dsn)
+        print('connecting to temporal')
+        client = await Client.connect(config.temporal.dsn)
+        print('connected to temporal')
+        return client
 
     # Добавлен провайдер для S3Client
     @provide(scope=Scope.APP)
@@ -77,7 +83,6 @@ class InfrastructureProvider(Provider):
     @provide(scope=Scope.APP)
     def get_signalr_connection(self, config: AppSettings) -> BaseHubConnection:
         hub_connection = HubConnectionBuilder().with_url(config.signalr_hub_url).build()
-        hub_connection.start()
         return hub_connection
 
 
@@ -87,6 +92,7 @@ class InfrastructureProvider(Provider):
                                   signalr: SignalREventPublisher,
                                   config: AppSettings) -> EventPublisher:
         if config.event_transport == "signalr":
+            signalr.client.start()
             return signalr
         return rabbit
 

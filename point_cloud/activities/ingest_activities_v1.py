@@ -24,6 +24,59 @@ class IngestActivitiesV1:
         self.status_store = status_store
 
     @activity.defn
+    def point_cloud_meta(self, cloud_path: str, hexbin_path: str) -> dict:
+        activity.heartbeat({"stage": "extracting_metadata_and_hexbin"})
+
+        # Пайплайн PDAL: читаем файл и сразу строим hexbin (полигоны плотности)
+        pipeline_json = [
+            {
+                "type": "readers.las",
+                "filename": cloud_path
+            },
+            {
+                "type": "filters.hexbin",
+                "edge_size": 10,  # Размер стороны гексагона в единицах карты
+                "threshold": 1  # Мин. точек в гексагоне для его создания
+            }
+        ]
+
+        try:
+            pipeline = pdal.Pipeline(json.dumps(pipeline_json))
+            pipeline.execute()
+        except Exception as exc:
+            raise ApplicationError(f"Failed to execute PDAL hexbin pipeline: \n{exc}")
+
+        # Достаем метаданные после выполнения
+        raw_metadata = pipeline.metadata['metadata']
+        try:
+            metadata = json.loads(raw_metadata) if isinstance(raw_metadata, str) else raw_metadata
+        except Exception as exc:
+            raise ApplicationError(f"Failed to decode PDAL metadata: \n{exc}")
+
+        # 1. Извлекаем и сохраняем Hexbin в виде GeoJSON
+        hexbin_data = metadata.get("filters.hexbin", {})
+        with open(hexbin_path, 'w', encoding='utf-8') as f:
+            json.dump(hexbin_data, f, indent=2)
+
+        # 2. Вытаскиваем полезные метаданные облака для возврата
+        reader_meta = metadata.get("readers.las", {})
+
+        result_meta = {
+            "filename": os.path.basename(cloud_path),
+            "point_count": reader_meta.get("count", 0),
+            "minx": reader_meta.get("minx"),
+            "maxx": reader_meta.get("maxx"),
+            "miny": reader_meta.get("miny"),
+            "maxy": reader_meta.get("maxy"),
+            "minz": reader_meta.get("minz"),
+            "maxz": reader_meta.get("maxz"),
+            # Если CRS нет, вернем пустой словарь, чтобы не падать
+            "crs": reader_meta.get("srs", {}).get("json", {})
+        }
+
+        return result_meta
+
+    @activity.defn
     async def download_s3_object(self, key: str, dst_dir: str) -> str:
         """
         Асинхронно скачивает объект из S3 по ключу.
