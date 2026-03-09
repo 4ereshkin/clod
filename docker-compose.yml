@@ -69,35 +69,9 @@ services:
     ports:
       - "${TEMPORAL_UI_PORT}:8080"
 
-  minio:
-    image: minio/minio:latest
-    container_name: minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    ports:
-      - "${MINIO_PORT}:9000"
-      - "${MINIO_CONSOLE_PORT}:9001"
-    volumes:
-      - ${MINIO_DATA_PATH}:/data
-
-  minio-client:
-    image: minio/mc:latest
-    container_name: minio-client
-    depends_on:
-      - minio
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
-      tail -f /dev/null
-      "
-
   seaweed-master:
     image: chrislusf/seaweedfs:latest
     container_name: seaweed-master
-    profiles: ["seaweed"]
     command: master -ip=seaweed-master -port=9333
     ports:
       - "${SEAWEED_MASTER_PORT}:9333"
@@ -107,7 +81,6 @@ services:
   seaweed-volume:
     image: chrislusf/seaweedfs:latest
     container_name: seaweed-volume
-    profiles: ["seaweed"]
     command: volume -mserver="seaweed-master:9333" -port=8080 -ip=seaweed-volume -dir=/data
     depends_on:
       - seaweed-master
@@ -126,7 +99,6 @@ services:
   seaweed-filer:
     image: chrislusf/seaweedfs:latest
     container_name: seaweed-filer
-    profiles: ["seaweed"]
     command: filer -master="seaweed-master:9333" -ip=seaweed-filer -port=8888
     depends_on:
       - seaweed-master
@@ -139,7 +111,6 @@ services:
   seaweed-s3:
     image: chrislusf/seaweedfs:latest
     container_name: seaweed-s3
-    profiles: ["seaweed"]
     command: s3 -filer="seaweed-filer:8888" -port=8333
     depends_on:
       - seaweed-filer

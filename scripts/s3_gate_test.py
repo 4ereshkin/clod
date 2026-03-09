@@ -17,16 +17,14 @@ def _env(name: str, default: str | None = None) -> str | None:
 
 
 def _client_from_env():
-    minio_port = _env("MINIO_PORT")
-    minio_host = f"http://127.0.0.1:{minio_port}" if minio_port else None
-    endpoint = _env("S3_ENDPOINT", minio_host)
-    access_key = _env("S3_ACCESS_KEY", _env("MINIO_ROOT_USER"))
-    secret_key = _env("S3_SECRET_KEY", _env("MINIO_ROOT_PASSWORD"))
+    endpoint = _env("S3_ENDPOINT")
+    access_key = _env("S3_ACCESS_KEY")
+    secret_key = _env("S3_SECRET_KEY")
     region = _env("S3_REGION", "us-east-1")
     if not endpoint:
-        raise SystemExit("S3 endpoint is not set (S3_ENDPOINT or MINIO_PORT).")
+        raise SystemExit("S3 endpoint is not set (S3_ENDPOINT).")
     if not access_key or not secret_key:
-        raise SystemExit("S3 credentials are not set (S3_ACCESS_KEY/S3_SECRET_KEY or MINIO_ROOT_*).")
+        raise SystemExit("S3 credentials are not set (S3_ACCESS_KEY/S3_SECRET_KEY).")
     return boto3.client(
         "s3",
         endpoint_url=endpoint,
@@ -73,7 +71,7 @@ def _parallel_head_get(client, bucket: str, key: str, workers: int, rounds: int)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="S3 gate test for SeaweedFS/MinIO compatibility.")
+    parser = argparse.ArgumentParser(description="S3 gate test for SeaweedFS compatibility.")
     parser.add_argument("--bucket", default=_env("S3_BUCKET", "lidar-data"))
     parser.add_argument("--prefix", default="s3-gate")
     parser.add_argument("--small-size-kb", type=int, default=4)
