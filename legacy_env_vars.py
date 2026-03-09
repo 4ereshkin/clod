@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from typing import Literal
+
 from dotenv import load_dotenv
 import os
 from urllib.parse import quote_plus
@@ -29,5 +31,7 @@ class Settings:
     s3_bucket: str = os.getenv("S3_BUCKET", "lidar-data")
     s3_region: str = os.getenv("S3_REGION", "us-east-1")
 
+    event_transport: Literal['rabbit', 'signalr'] = 'rabbit'
+    signalr_hub_url: str = 'http://localhost:5000/ingestHub'
 
 settings = Settings()
