@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -37,13 +37,13 @@ class ResultObjectDTO(BaseModel):
 class WorkflowCompletedDTO(BaseModel):
     workflow_id: str = Field(min_length=1)
     scenario: str
-    status: WorkflowStatus = WorkflowStatus.COMPLETED
+    status: Literal[WorkflowStatus.COMPLETED] = WorkflowStatus.COMPLETED
     outputs: list[ResultObjectDTO]
 
 class WorkflowFailedDTO(BaseModel):
     workflow_id: str = Field(min_length=1)
     scenario: str
-    status: WorkflowStatus = WorkflowStatus.FAILED
+    status: Literal[WorkflowStatus.FAILED] = WorkflowStatus.FAILED
     error_code: Any
     error_message: str
     retryable: bool

@@ -36,9 +36,19 @@ class IngestSignalRController:
 
             command = to_start_command(dto)
 
-            asyncio.run_coroutine_threadsafe(
+            future = asyncio.run_coroutine_threadsafe(
                 self.use_case.execute(command),
                 self._loop)
 
+            future.add_done_callback(self._task_done_callback)
+
         except Exception as e:
             logger.exception(f'Failed to process SignalR message: {e}')
+
+    def _task_done_callback(self, future):
+        try:
+            exc = future.exception()
+            if exc:
+                logger.error(f'Background task failed: {exc}', exc_info=exc)
+        except Exception as e:
+            logger.error(f'Failed to retrieve background task exception: {e}')

@@ -33,7 +33,7 @@ class StartUseCase:
         await self._push_status(command=command, status=WorkflowStatus.RESOLVED_SCENARIO,
                                 details={"workflow_name": spec.workflow_name})
 
-        payload = command.model_dump()
+        payload = command.to_temporal_payload()
 
         await self._push_status(command=command, status=WorkflowStatus.STARTING, details={"payload": payload})
 
@@ -90,7 +90,7 @@ class StartUseCase:
         )
 
         await self._push_status(command=command, status=WorkflowStatus.COMPLETED,
-                                details={"outputs": [o.__dict__ for o in outputs]})
+                                details={"outputs": [o.model_dump() for o in outputs]})
         await self.publisher.publish_completed(result)
         return result
 

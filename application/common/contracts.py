@@ -1,6 +1,6 @@
 from enum import Enum
 from time import time
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -33,7 +33,7 @@ class StatusEvent(BaseModel):
 class FailedEvent(BaseModel):
     workflow_id: str = Field(min_length=1)
     scenario: str
-    status: WorkflowStatus = WorkflowStatus.FAILED
+    status: Literal[WorkflowStatus.FAILED] = WorkflowStatus.FAILED
     error_code: ErrorCode
     error_message: str
     retryable: bool

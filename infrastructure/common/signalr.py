@@ -6,7 +6,6 @@ from signalrcore.hub_connection_builder import BaseHubConnection
 
 from application.common.interfaces import EventPublisher
 from application.common.contracts import StatusEvent, FailedEvent, ScenarioResult
-from interfaces.ingest.mappers import to_status_dto, to_completed_event, to_failed_event
 
 
 class SignalREventPublisher:
@@ -20,21 +19,27 @@ class SignalREventPublisher:
         self.completed_method = completed_method
         self.failed_method = failed_method
 
+    def _serialize_status(self, event: StatusEvent) -> dict[str, Any]:
+        raise NotImplementedError
+
+    def _serialize_completed(self, result: ScenarioResult) -> dict[str, Any]:
+        raise NotImplementedError
+
+    def _serialize_failed(self, event: FailedEvent) -> dict[str, Any]:
+        raise NotImplementedError
+
     async def publish_status(self, event: StatusEvent) -> None:
-        dto = to_status_dto(event)
-        payload = dto.model_dump(mode='json')
+        payload = self._serialize_status(event)
 
         await asyncio.to_thread(self.client.send, self.status_method, [payload])
 
 
     async def publish_completed(self, result: ScenarioResult) -> None:
-        dto = to_completed_event(result)
-        payload = dto.model_dump(mode='json')
+        payload = self._serialize_completed(result)
 
         await asyncio.to_thread(self.client.send, self.completed_method, [payload])
 
     async def publish_failed(self, event: FailedEvent) -> None:
-        dto = to_failed_event(event)
-        payload = dto.model_dump(mode='json')
+        payload = self._serialize_failed(event)
 
         await asyncio.to_thread(self.client.send, self.failed_method, [payload])
