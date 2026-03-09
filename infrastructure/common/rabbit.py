@@ -7,7 +7,6 @@ from aio_pika.abc import AbstractChannel
 from application.common.interfaces import EventPublisher
 
 from application.common.contracts import StatusEvent, FailedEvent, ScenarioResult
-from interfaces.ingest.mappers import to_completed_event, to_failed_event, to_status_dto
 
 
 class RabbitEventPublisher:
@@ -19,9 +18,17 @@ class RabbitEventPublisher:
         self.completed_key = completed_key
         self.failed_key = failed_key
 
+    def _serialize_status(self, event: StatusEvent) -> bytes:
+        raise NotImplementedError
+
+    def _serialize_completed(self, result: ScenarioResult) -> bytes:
+        raise NotImplementedError
+
+    def _serialize_failed(self, event: FailedEvent) -> bytes:
+        raise NotImplementedError
+
     async def publish_status(self, event: StatusEvent) -> None:
-        dto = to_status_dto(event)
-        body = dto.model_dump_json().encode()
+        body = self._serialize_status(event)
 
         message = Message(body=body,
                           delivery_mode=DeliveryMode.PERSISTENT,
@@ -35,8 +42,7 @@ class RabbitEventPublisher:
 
 
     async def publish_completed(self, result: ScenarioResult) -> None:
-        dto = to_completed_event(result)
-        body = dto.model_dump_json().encode()
+        body = self._serialize_completed(result)
 
         message = Message(body=body,
                           delivery_mode=DeliveryMode.PERSISTENT,
@@ -50,8 +56,7 @@ class RabbitEventPublisher:
 
 
     async def publish_failed(self, event: FailedEvent) -> None:
-        dto = to_failed_event(event)
-        body = dto.model_dump_json().encode()
+        body = self._serialize_failed(event)
 
         message = Message(body=body,
                           delivery_mode=DeliveryMode.PERSISTENT,
