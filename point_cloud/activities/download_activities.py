@@ -6,7 +6,8 @@ import asyncio
 
 from temporalio import activity
 
-from legacy_env_vars import settings
+from application.common.config import get_settings
+
 from lidar_app.app.repo import Repo
 from lidar_app.app.s3_store import S3Store
 from lidar_app.app.artifact_service import download_artifact
@@ -20,10 +21,10 @@ async def download_from_s3(
 ):
     def _run():
         s3 = S3Store(
-            settings.s3_endpoint,
-            settings.s3_access_key,
-            settings.s3_secret_key,
-            settings.s3_region,
+            get_settings().s3.endpoint,
+            get_settings().s3.access_key,
+            get_settings().s3.secret_key,
+            get_settings().s3.region,
         )
 
         dst_path = Path(dst_dir)
@@ -72,10 +73,10 @@ async def download_dataset_version_artifact(
             )
 
         s3 = S3Store(
-            settings.s3_endpoint,
-            settings.s3_access_key,
-            settings.s3_secret_key,
-            settings.s3_region,
+            get_settings().s3.endpoint,
+            get_settings().s3.access_key,
+            get_settings().s3.secret_key,
+            get_settings().s3.region,
         )
 
         dst_path = Path(dst_dir)

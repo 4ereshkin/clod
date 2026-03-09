@@ -7,7 +7,8 @@ from typing import Any, Dict, List, Tuple
 from temporalio import activity
 
 from lidar_app.app.repo import Repo
-from legacy_env_vars import settings
+from application.common.config import get_settings
+
 from lidar_app.app.s3_store import S3Store, S3Ref, safe_segment
 
 def _dsreg_prefix(company_id: str, dataset_version_id: str) -> str:
@@ -38,7 +39,7 @@ async def collect_registration_graph(company_id: str, dataset_version_id: str, s
     """
     def _run() -> Dict[str, Any]:
         repo = Repo()
-        s3 = S3Store(settings.s3_endpoint, settings.s3_access_key, settings.s3_secret_key, settings.s3_region)
+        s3 = S3Store(get_settings().s3.endpoint, get_settings().s3.access_key, get_settings().s3.secret_key, get_settings().s3.region)
 
         scans = repo.list_scans_by_dataset_version(dataset_version_id)
         scan_ids = [s.id for s in scans]
@@ -187,7 +188,7 @@ async def persist_pose_graph_solution(
     """
     def _run() -> Dict[str, Any]:
         repo = Repo()
-        s3 = S3Store(settings.s3_endpoint, settings.s3_access_key, settings.s3_secret_key, settings.s3_region)
+        s3 = S3Store(get_settings().s3.endpoint, get_settings().s3.access_key, get_settings().s3.secret_key, get_settings().s3.region)
 
         prefix = _dsreg_prefix(company_id, dataset_version_id)
         sol_key = f"{prefix}/v{schema_version}/pose_graph_solution.json"
@@ -198,10 +199,10 @@ async def persist_pose_graph_solution(
         # Здесь пропускаю “exists” ради простоты.
 
         body = json.dumps(solution["poses"], ensure_ascii=False, indent=2).encode("utf-8")
-        etag1, size1 = s3.put_bytes(S3Ref(settings.s3_bucket, sol_key), body, content_type="application/json")
+        etag1, size1 = s3.put_bytes(S3Ref(get_settings().s3.bucket, sol_key), body, content_type="application/json")
 
         dia = json.dumps(solution["diagnostics"], ensure_ascii=False, indent=2).encode("utf-8")
-        etag2, size2 = s3.put_bytes(S3Ref(settings.s3_bucket, dia_key), dia, content_type="application/json")
+        etag2, size2 = s3.put_bytes(S3Ref(get_settings().s3.bucket, dia_key), dia, content_type="application/json")
 
         # SoT: записываем позы
         poses_written = 0

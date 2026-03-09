@@ -4,7 +4,7 @@ import os
 from contextlib import asynccontextmanager
 from aiobotocore.session import get_session
 
-from infrastructure.infrastructure_config import S3Config
+from application.common.config import S3Settings
 from typing import Optional
 
 from botocore.exceptions import ClientError
@@ -21,7 +21,7 @@ class S3ConnectionConfig:
 """
 
 class S3Client:
-    def __init__(self, net_params: S3Config):
+    def __init__(self, net_params: S3Settings):
         self._net_params = net_params
         self.session = get_session()
 
@@ -30,8 +30,8 @@ class S3Client:
         # Формируем конфигурацию для aiobotocore
         async with self.session.create_client(
             's3',
-            region_name=self._net_params.region_name,
-            endpoint_url=self._net_params.endpoint_url,
+            region_name=self._net_params.region,
+            endpoint_url=self._net_params.endpoint,
             aws_access_key_id=self._net_params.access_key,
             aws_secret_access_key=self._net_params.secret_key,
         ) as client:
@@ -56,7 +56,7 @@ class S3Client:
         # Проверяет наличие объекта в S3 через HEAD. Если передан local_file_path, сравнивает ETag с MD5 локального файла
         async with self.get_client() as client:
             try:
-                response = await client.head_object(Bucket=self._net_params.bucket_name, Key=key)
+                response = await client.head_object(Bucket=self._net_params.bucket, Key=key)
                 remote_etag = response.get('ETag', '').strip('"')
 
                 if not local_file_path:
@@ -97,7 +97,7 @@ class S3Client:
 
                 with open(file_path, 'rb') as file_data:
                     await client.put_object(
-                        Bucket=self._net_params.bucket_name,
+                        Bucket=self._net_params.bucket,
                         Key=object_name,
                         Body=file_data,
                         ContentMD5=md5_base64,
@@ -109,7 +109,7 @@ class S3Client:
                 return
 
             mp_create = await client.create_multipart_upload(
-                Bucket=self._net_params.bucket_name,
+                Bucket=self._net_params.bucket,
                 Key=object_name,
                 Metadata={
                     'original_filename': os.path.basename(file_path),
@@ -131,7 +131,7 @@ class S3Client:
                         chunk_base64 = base64.b64encode(chunk_md5.digest()).decode('utf-8')
 
                         part_resp = await client.upload_part(
-                            Bucket=self._net_params.bucket_name,
+                            Bucket=self._net_params.bucket,
                             Key=object_name,
                             PartNumber=part_number,
                             UploadId=upload_id,
@@ -148,7 +148,7 @@ class S3Client:
                         part_number += 1
 
                 await client.complete_multipart_upload(
-                    Bucket=self._net_params.bucket_name,
+                    Bucket=self._net_params.bucket,
                     Key=object_name,
                     UploadId=upload_id,
                     MultipartUpload={'Parts': parts},
@@ -157,7 +157,7 @@ class S3Client:
             except Exception as e:
                 print(f'Error occured when uploading object {object_name}: {e}.')
                 await client.abort_multipart_upload(
-                    Bucket=self._net_params.bucket_name,
+                    Bucket=self._net_params.bucket,
                     Key=object_name,
                     UploadId=upload_id,
                 )
@@ -169,7 +169,7 @@ class S3Client:
         async with self.get_client() as client:
             try:
                 response = await client.get_object(
-                    Bucket=self._net_params.bucket_name,
+                    Bucket=self._net_params.bucket,
                     Key=key,
                 )
                 async with response['Body'] as stream:

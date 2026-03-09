@@ -1,9 +1,10 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from legacy_env_vars import settings
+from application.common.config import get_settings
 
 
-engine = create_engine(settings.pg_dsn, pool_pre_ping=True)
+
+engine = create_engine(get_settings().postgres.dsn, pool_pre_ping=True)
 Session = sessionmaker(bind=engine)
 
 

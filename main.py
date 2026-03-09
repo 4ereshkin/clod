@@ -10,7 +10,7 @@ from application.common.use_case import StartUseCase
 from infrastructure.providers import InfrastructureProvider, ApplicationProvider
 from interfaces.ingest.dto import IngestStartMessageDTO
 from interfaces.ingest.mappers import to_start_command
-from legacy_env_vars import Settings
+from application.common.config import AppSettings
 from interfaces.ingest.signalr import IngestSignalRController
 
 logging.basicConfig(level=logging.INFO)
@@ -25,7 +25,7 @@ async def main():
 
     try:
         start_uc = await container.get(StartUseCase)
-        config = await container.get(Settings)
+        config = await container.get(AppSettings)
 
         if config.event_transport == "signalr":
             logger.info("Starting SignalR listening...")

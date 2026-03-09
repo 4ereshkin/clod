@@ -12,7 +12,8 @@ from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
 from lidar_app.app.artifact_service import store_artifact
-from legacy_env_vars import settings
+from application.common.config import get_settings
+
 from lidar_app.app.repo import Repo
 from lidar_app.app.s3_store import scan_prefix, S3Store
 
@@ -191,10 +192,10 @@ async def upload_hexbin(
         key = f"{prefix}/derived/v{scan.schema_version}/profiling/hexbin/{filename}"
 
         s3 = S3Store(
-            settings.s3_endpoint,
-            settings.s3_access_key,
-            settings.s3_secret_key,
-            settings.s3_region,
+            get_settings().s3.endpoint,
+            get_settings().s3.access_key,
+            get_settings().s3.secret_key,
+            get_settings().s3.region,
         )
 
         result = store_artifact(
@@ -204,7 +205,7 @@ async def upload_hexbin(
             scan_id=scan_id,
             kind=kind,
             schema_version=scan.schema_version,
-            bucket=settings.s3_bucket,
+            bucket=get_settings().s3.bucket,
             key=key,
             local_file_path=str(local_path),
             content_type="application/geo+json",
@@ -258,10 +259,10 @@ async def upload_profiling_manifest(
         body = json.dumps(manifest, ensure_ascii=False, indent=2).encode("utf-8")
 
         s3 = S3Store(
-            settings.s3_endpoint,
-            settings.s3_access_key,
-            settings.s3_secret_key,
-            settings.s3_region,
+            get_settings().s3.endpoint,
+            get_settings().s3.access_key,
+            get_settings().s3.secret_key,
+            get_settings().s3.region,
         )
 
         result = store_artifact(
@@ -271,7 +272,7 @@ async def upload_profiling_manifest(
             scan_id=scan_id,
             kind=kind,
             schema_version=scan.schema_version,
-            bucket=settings.s3_bucket,
+            bucket=get_settings().s3.bucket,
             key=key,
             data=body,
             content_type="application/json",
