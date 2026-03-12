@@ -8,6 +8,11 @@ REGISTRY: dict[tuple[str, str], ScenarioSpec] = {
         workflow_name=INGEST_V1.workflow_name,
         task_queue=INGEST_V1.task_queue,
         query_name=INGEST_V1.query_name,
+    ),
+    ('registration', '1'): ScenarioSpec(
+        workflow_name=REGISTRATION_V1.workflow_name,
+        task_queue=REGISTRATION_V1.task_queue,
+        query_name=REGISTRATION_V1.query_name,
     )
 }
 

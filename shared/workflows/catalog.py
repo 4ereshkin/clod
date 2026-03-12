@@ -16,3 +16,8 @@ INGEST_V1 = WorkflowBinding(
     query_name='progress',
 )
 
+REGISTRATION_V1 = WorkflowBinding(
+    workflow_name='Registration-1',
+    task_queue='registration-queue',
+    query_name='progress',
+)

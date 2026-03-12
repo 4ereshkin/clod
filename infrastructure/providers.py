@@ -19,6 +19,7 @@ from infrastructure.ingest.rabbit_adapter import RabbitEventPublisher
 from infrastructure.ingest.temporal_adapter import TemporalAdapter
 from infrastructure.s3 import S3Client
 from point_cloud.activities.ingest_activities_v1 import IngestActivitiesV1
+from point_cloud.activities.registration_activities import RegistrationActivitiesV1
 
 
 class InfrastructureProvider(Provider):
@@ -107,3 +108,4 @@ class ApplicationProvider(Provider):
 
     start_use_case = provide(StartUseCase, scope=Scope.APP)
     ingest_activities_v1 = provide(IngestActivitiesV1, scope=Scope.APP)
+    registration_activities_v1 = provide(RegistrationActivitiesV1, scope=Scope.APP)
