@@ -17,6 +17,7 @@ from interfaces.registration.mappers import to_registration_start_command
 
 from application.common.config import AppSettings
 from interfaces.ingest.signalr import IngestSignalRController
+from interfaces.registration.signalr import RegistrationSignalRController
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -43,7 +44,12 @@ async def main():
             )
             ingest_controller.start_listening()
 
-            # reg
+            registration_controller = RegistrationSignalRController(
+                use_case=start_uc,
+                client=hub_connection,
+                method_name="StartRegistration"
+            )
+            registration_controller.start_listening()
 
         else:
             logger.info("Starting RabbitMQ listening...")

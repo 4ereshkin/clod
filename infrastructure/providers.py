@@ -14,9 +14,9 @@ from temporalio.client import Client
 from application.common.interfaces import TemporalGateway, StatusStore, EventPublisher
 from application.common.use_case import StartUseCase
 from infrastructure.common.signalr import SignalREventPublisher
-from infrastructure.ingest.keydb_adapter import KeyDbStatusStore
-from infrastructure.ingest.rabbit_adapter import RabbitEventPublisher
-from infrastructure.ingest.temporal_adapter import TemporalAdapter
+from infrastructure.common.keydb import KeyDbStatusStore
+from infrastructure.common.rabbit import RabbitEventPublisher
+from infrastructure.common.temporal import TemporalAdapter
 from infrastructure.s3 import S3Client
 from point_cloud.activities.ingest_activities_v1 import IngestActivitiesV1
 from point_cloud.activities.registration_activities_v1 import RegistrationActivitiesV1
@@ -67,7 +67,7 @@ class InfrastructureProvider(Provider):
 
     @provide(scope=Scope.APP)
     def get_keydb_store(self, redis: Redis) -> KeyDbStatusStore:
-        return KeyDbStatusStore(redis_client=redis)
+        return KeyDbStatusStore(redis_client=redis, prefix='pipeline')
 
     @provide(scope=Scope.APP)
     def get_rabbit_publisher(self, channel_pool: Pool[AbstractChannel], config: AppSettings) -> RabbitEventPublisher:
@@ -75,11 +75,7 @@ class InfrastructureProvider(Provider):
 
     @provide(scope=Scope.APP)
     def get_signalr_publisher(self, client: BaseHubConnection) -> SignalREventPublisher:
-        return SignalREventPublisher(client=client,
-                                     status_method='RecieveIngestStatus',
-                                     completed_method='RecieveIngestCompleted',
-                                     failed_method='RecieveIngestFailed'
-                                     )
+        return SignalREventPublisher(client=client)
 
     @provide(scope=Scope.APP)
     def get_signalr_connection(self, config: AppSettings) -> BaseHubConnection:
