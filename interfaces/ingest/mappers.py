@@ -26,9 +26,9 @@ from interfaces.ingest.dto import (
 def to_start_command(message: IngestStartMessageDTO) -> StartIngestCommand:
     dataset = {
         scan_id: StartIngestScanPayload(
-            point_cloud={k: StartIngestObjectRef(s3_key=v.s3_key, etag=v.etag) for k, v in scan.point_cloud.items()},
-            trajectory={k: StartIngestObjectRef(s3_key=v.s3_key, etag=v.etag) for k, v in scan.trajectory.items()},
-            control_point={k: StartIngestObjectRef(s3_key=v.s3_key, etag=v.etag) for k, v in
+            point_cloud={k: StartIngestObjectRef(s3_key=v.s3_key, etag=v.etag, crs=v.crs) for k, v in scan.point_cloud.items()},
+            trajectory={k: StartIngestObjectRef(s3_key=v.s3_key, etag=v.etag, crs=v.crs) for k, v in scan.trajectory.items()},
+            control_point={k: StartIngestObjectRef(s3_key=v.s3_key, etag=v.etag, crs=v.crs) for k, v in
                            scan.control_point.items()},
         )
         for scan_id, scan in message.dataset.items()

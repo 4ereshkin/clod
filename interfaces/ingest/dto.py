@@ -13,6 +13,7 @@ from application.common.contracts import (
 class IngestObjectRefDTO(BaseModel):
     s3_key: str = Field(min_length=1)
     etag: str = Field(min_length=1)
+    crs: dict[str, Any] | None = None
 
 class ScanPayloadDTO(BaseModel):
     point_cloud: dict[str, IngestObjectRefDTO] = Field(default_factory=dict)
