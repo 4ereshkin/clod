@@ -11,7 +11,7 @@ from dishka import make_async_container
 
 from infrastructure.providers import InfrastructureProvider, ApplicationProvider
 # Импортируем наш новый класс активностей!
-from point_cloud.activities.registration_activities import RegistrationActivitiesV1
+from point_cloud.activities.registration_activities_v1 import RegistrationActivitiesV1
 # Импортируем наш новый воркфлоу!
 from point_cloud.workflows.registration import RegistrationWorkflow
 

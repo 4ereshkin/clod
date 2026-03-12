@@ -29,41 +29,44 @@ class RabbitEventPublisher:
 
     async def publish_status(self, event: StatusEvent) -> None:
         body = self._serialize_status(event)
+        routing_key = f'{event.scenario}.status'
 
         message = Message(body=body,
                           delivery_mode=DeliveryMode.PERSISTENT,
                           correlation_id=event.workflow_id,
                           content_type="application/json",
-                          type=self.status_key)
+                          type=routing_key)
 
         async with self.channel_pool.acquire() as channel:
             exchange = await channel.get_exchange(self.exchange_name)
-            await exchange.publish(message, routing_key=self.status_key)
+            await exchange.publish(message, routing_key=routing_key)
 
 
     async def publish_completed(self, result: ScenarioResult) -> None:
         body = self._serialize_completed(result)
+        routing_key = f'{result.scenario}.completed'
 
         message = Message(body=body,
                           delivery_mode=DeliveryMode.PERSISTENT,
                           correlation_id=result.workflow_id,
                           content_type="application/json",
-                          type=self.completed_key)
+                          type=routing_key)
 
         async with self.channel_pool.acquire() as channel:
             exchange = await channel.get_exchange(self.exchange_name)
-            await exchange.publish(message, routing_key=self.completed_key)
+            await exchange.publish(message, routing_key=routing_key)
 
 
     async def publish_failed(self, event: FailedEvent) -> None:
         body = self._serialize_failed(event)
+        routing_key = f'{event.scenario}.failed'
 
         message = Message(body=body,
                           delivery_mode=DeliveryMode.PERSISTENT,
                           correlation_id=event.workflow_id,
                           content_type="application/json",
-                          type=self.failed_key)
+                          type=routing_key)
 
         async with self.channel_pool.acquire() as channel:
             exchange = await channel.get_exchange(self.exchange_name)
-            await exchange.publish(message, routing_key=self.failed_key)
+            await exchange.publish(message, routing_key=routing_key)

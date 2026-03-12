@@ -8,8 +8,13 @@ from signalrcore.hub.base_hub_connection import BaseHubConnection
 
 from application.common.use_case import StartUseCase
 from infrastructure.providers import InfrastructureProvider, ApplicationProvider
+
 from interfaces.ingest.dto import IngestStartMessageDTO
 from interfaces.ingest.mappers import to_start_command
+
+from interfaces.registration.dto import RegistrationStartMessageDTO
+from interfaces.registration.mappers import to_registration_start_command
+
 from application.common.config import AppSettings
 from interfaces.ingest.signalr import IngestSignalRController
 
@@ -31,12 +36,14 @@ async def main():
             logger.info("Starting SignalR listening...")
             hub_connection = await container.get(BaseHubConnection)
 
-            signalr_controller = IngestSignalRController(
+            ingest_controller = IngestSignalRController(
                 use_case=start_uc,
                 client=hub_connection,
                 method_name="StartIngest"
             )
-            signalr_controller.start_listening()
+            ingest_controller.start_listening()
+
+            # reg
 
         else:
             logger.info("Starting RabbitMQ listening...")
@@ -44,6 +51,8 @@ async def main():
             channel: AbstractChannel = await rabbit_conn.channel()
 
             ingest_queue = await channel.declare_queue('ingest.start', durable=True)
+
+            reg_queue = await channel.declare_queue('registration.start', durable=True)
 
             async def process_ingest(message: AbstractIncomingMessage):
                 async with message.process():
@@ -61,9 +70,25 @@ async def main():
                     except Exception as e:
                         logger.error(f"Failed to process ingest: {e}", exc_info=True)
 
-            await ingest_queue.consume(process_ingest)
+            async def process_registration(message: AbstractIncomingMessage):
+                async with message.process():
+                    try:
+                        if not message.body:
+                            return
 
-        logger.info("Worker started. Waiting for messages...")
+                        payload = RegistrationStartMessageDTO.model_validate_json(message.body)
+                        command = to_registration_start_command(payload)
+                        logger.info(f"Starting registration workflow {command.workflow_id}")
+
+                        await start_uc.execute(command)
+
+                    except Exception as e:
+                        logger.error(f"Failed to process registration: {e}", exc_info=True)
+
+            await ingest_queue.consume(process_ingest)
+            await reg_queue.consume(process_registration)
+
+        logger.info("Listener started. Waiting for messages...")
         await asyncio.Future()
 
     finally:
