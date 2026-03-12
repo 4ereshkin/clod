@@ -63,13 +63,15 @@ class IngestWorkflow:
         dataset = payload.get('dataset', {})
         scan_count = len(dataset)
 
-        georeference = 'NO' if scan_count < 5 else 'YES'
+        total_control_points = 0
+        for scan_data in dataset.values():
+            total_control_points += len(scan_data.get("control_point", {}))
+
+        georeference = 'YES' if total_control_points >= 4 else 'NO'
 
         manifest_data = {
             'georeference': georeference,
             'profiling_scan_count': scan_count,
-            'reproject': 'YES',
-            'target_crs': TARGET_CRS,
             'scans': {}
         }
 
@@ -102,9 +104,23 @@ class IngestWorkflow:
         for scan_id, scan_data in dataset.items():
             self._stage = f"Processing scan {scan_id}"
             scan_manifest = {
+                "inputs": {
+                    "point_cloud": {},
+                    "trajectory": {},
+                    "control_point": {}
+                },
                 "profiling": {},
-                "reprojected": {}
+                "reprojected": {},
+                "reproject": "NO"
             }
+
+            for kind in ["point_cloud", "trajectory", "control_point"]:
+                objects = scan_data.get(kind, {})
+                for part_id, info in objects.items():
+                    scan_manifest["inputs"][kind][part_id] = {
+                        "s3_key": info.get("s3_key"),
+                        "crs": info.get("crs")
+                    }
 
             clouds = scan_data.get("point_cloud", {})
             for part_id, cloud_info in clouds.items():
@@ -113,8 +129,7 @@ class IngestWorkflow:
                     continue
 
                 # Исходный CRS (берем из JSON)
-                in_crs_dict = cloud_info.get("crs", {})
-                in_crs_str = json.dumps(in_crs_dict) if in_crs_dict else "EPSG:4326"
+                in_crs_dict = cloud_info.get("crs")
 
                 # Формируем ключи для новых артефактов в S3 (например, рядом с исходным файлом)
                 base_s3_dir = cloud_info["s3_key"].rsplit("/", 1)[0]
@@ -133,6 +148,7 @@ class IngestWorkflow:
                     id=f"{workflow_id}-prof-{scan_id}-{part_id}",
                     retry_policy=rp_long,
                 )
+
                 scan_manifest["profiling"][part_id] = prof_result
 
                 # Добавляем результаты профилирования в общий вывод (чтобы UseCase их получил)
@@ -141,24 +157,30 @@ class IngestWorkflow:
                     self._results.append(res_obj)
 
                 # 2.2 Репроекция
-                self._stage = f"Reprojecting {scan_id}_{part_id}"
-                repr_s3_key = f"{base_s3_dir}/reprojected/{cloud_name}_copc.laz"
+                if in_crs_dict:
+                    self._stage = f"Reprojecting {scan_id}_{part_id}"
+                    in_crs_str = json.dumps(in_crs_dict)
+                    repr_s3_key = f"{base_s3_dir}/reprojected/{cloud_name}_copc.laz"
 
-                repr_result = await workflow.execute_child_workflow(
-                    "IngestReprojectWorkflow",
-                    ReprojectWorkflowParams(
-                        local_path=local_path,
-                        in_srs=in_crs_str,
-                        out_srs=TARGET_CRS,
-                        output_s3_key=repr_s3_key
-                    ),
-                    id=f"{workflow_id}-repr-{scan_id}-{part_id}",
-                    retry_policy=rp_long,
-                )
+                    repr_result = await workflow.execute_child_workflow(
+                        "IngestReprojectWorkflow",
+                        ReprojectWorkflowParams(
+                            local_path=local_path,
+                            in_srs=in_crs_str,
+                            out_srs=TARGET_CRS,
+                            output_s3_key=repr_s3_key
+                        ),
+                        id=f"{workflow_id}-repr-{scan_id}-{part_id}",
+                        retry_policy=rp_long,
+                    )
 
-                scan_manifest["reprojected"][part_id] = repr_result
-                # Добавляем репроецированное облако в общий вывод
-                self._results.append({"kind": "point_cloud.copc", **repr_result})
+                    scan_manifest["reproject"] = "YES"
+                    scan_manifest["reprojected"][part_id] = {
+                        "result": repr_result,
+                        "crs": TARGET_CRS
+                    }
+                    # Добавляем репроецированное облако в общий вывод
+                    self._results.append({"kind": "point_cloud.copc", **repr_result})
 
             manifest_data["scans"][scan_id] = scan_manifest
 
