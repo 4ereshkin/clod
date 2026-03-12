@@ -10,7 +10,7 @@ import json
 from typing import Optional
 
 import customtkinter as ctk
-from pyproj import CRS, CRSError
+from pyproj import CRS
 
 # ── Тема ──────────────────────────────────────────────────────────────────────
 ctk.set_appearance_mode("dark")
@@ -160,7 +160,7 @@ class EpsgScreen(BaseScreen):
             self.state["crs_source"] = "epsg"
             self.state["crs_obj"] = crs
             self.navigate(PreviewScreen)
-        except (ValueError, CRSError):
+        except (ValueError):
             self.error(f"EPSG:{code} не найден в базе PROJ. Проверьте код.")
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -183,7 +183,7 @@ class RawScreen(BaseScreen):
             self.state["crs_source"] = "raw"
             self.state["crs_obj"] = crs
             self.navigate(PreviewScreen)
-        except CRSError as e:
+        except Exception as e:
             self.error(f"Ошибка парсинга: {e}")
 
 # ══════════════════════════════════════════════════════════════════════════════
