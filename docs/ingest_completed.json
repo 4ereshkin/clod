@@ -1,0 +1,27 @@
+{
+  "workflow_id": "string",
+  "scenario": "ingest",
+  "status": "COMPLETED",
+  "outputs": [
+    {
+      "kind": "profiling.stats",
+      "s3_key": "string",
+      "etag": "string"
+    },
+    {
+      "kind": "profiling.hexbin",
+      "s3_key": "string",
+      "etag": "string"
+    },
+    {
+      "kind": "point_cloud.copc",
+      "s3_key": "string",
+      "etag": "string"
+    },
+    {
+      "kind": "manifest",
+      "s3_key": "string",
+      "etag": "string"
+    }
+  ]
+}
