@@ -1,4 +1,4 @@
-FROM python:3.11-slim-bullseye
+FROM condaforge/miniforge3:latest
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -6,21 +6,23 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Build tools (for pdal source build) + runtime libs for open3d
+# Runtime libs for open3d
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        build-essential \
-        cmake \
-        libpdal-dev \
         libgl1 \
         libgomp1 \
         libglib2.0-0 \
-        ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Python 3.11 + pdal (system lib + Python binding) via conda-forge
+RUN mamba install -y -c conda-forge \
+        python=3.11 \
+        python-pdal \
+    && mamba clean -afy
+
 COPY requirements.txt ./
-RUN pip install --upgrade pip \
-    && pip install -r requirements.txt
+# pdal is already installed via conda — skip it here
+RUN pip install --no-cache-dir $(grep -v '^pdal' requirements.txt)
 
 COPY . .
 
