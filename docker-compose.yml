@@ -135,3 +135,38 @@ services:
     ports:
       - "6379:6379"
     command: keydb-server --requirepass password --appendonly yes
+
+  point-cloud-listener:
+    build: .
+    container_name: point-cloud-listener
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - temporal
+      - keydb
+      - rabbitmq
+    command: python main.py
+
+  worker-ingest:
+    build: .
+    container_name: worker-ingest
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - temporal
+      - keydb
+      - seaweed-s3
+      - rabbitmq
+    command: python point_cloud/workers/worker_ingest.py
+
+  worker-registration:
+    build: .
+    container_name: worker-registration
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - temporal
+      - keydb
+      - seaweed-s3
+      - rabbitmq
+    command: python point_cloud/workers/worker_registration.py

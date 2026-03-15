@@ -21,15 +21,38 @@ async def send_test_message():
         "workflow_id": workflow_id,
         "scenario": "ingest",
         "version": {
-            "message_version": "1",
+            "message_version": "0",
             "pipeline_version": "1"
         },
         "dataset": {
             "scan_001": {
                 "point_cloud": {
                     "part_1": {
-                        "s3_key": "raw/scan_001.laz",
-                        "etag": "fake_etag_123"
+                        "s3_key": "raw/scan_001_part1.laz",
+                        "etag": "fake_etag_part1",
+                        "crs": {} # Передаем кастомную CRS
+                    },
+                    "part_2": {
+                        "s3_key": "raw/scan_001_part2.laz",
+                        "etag": "fake_etag_part2"
+                        # Без CRS, воркфлоу должен подставить дефолтный EPSG:4326
+                    }
+                },
+                "trajectory": {
+                    "main_traj": {
+                        "s3_key": "raw/scan_001_trajectory.txt",
+                        "etag": "fake_etag_traj",
+                        "crs": {}
+                    }
+                },
+                "control_point": {}
+            },
+            "scan_002": {
+                "point_cloud": {
+                    "part_1": {
+                        "s3_key": "raw/scan_002_part1.laz",
+                        "etag": "fake_etag_scan2_part1",
+                        "crs": {}
                     }
                 },
                 "trajectory": {},
@@ -60,7 +83,9 @@ async def send_test_message():
                 routing_key=QUEUE_NAME,
             )
 
-            logger.info(f"✅ Successfully sent test ingest message to '{QUEUE_NAME}'. Workflow ID: {workflow_id}")
+            logger.info(f"✅ Successfully sent test ingest message to '{QUEUE_NAME}'.")
+            logger.info(f"Workflow ID: {workflow_id}")
+            logger.info(f"Payload: \n{json.dumps(payload, indent=2)}")
 
     except Exception as e:
         logger.error(f"❌ Failed to send message: {e}")

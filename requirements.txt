@@ -1,15 +1,31 @@
-customtkinter==5.2.2
-pyproj==3.7.2
-aio-pika==9.6.1
-temporalio==1.23.0
-boto3==1.42.59
-botocore==1.42.59
-sqlalchemy==2.0.48
-python-ulid==3.1.0
-pydantic==2.12.5
+# Point Cloud processing
 pdal==2.10.0
-numpy==2.4.2
 open3d==0.19.0
-scipy==1.17.1
 laspy==2.7.0
+numpy==2.4.2
+pyproj==3.7.2
+
+# Temporal workflow
+temporalio==1.23.0
+
+# Messaging & Events
+aio-pika==9.6.1
+signalrcore
+redis
+
+# Cloud Storage
+# botocore version is resolved by aiobotocore — do not pin separately
 aiobotocore==3.2.1
+
+# Data validation & Config
+pydantic==2.12.5
+pydantic-settings
+python-dotenv
+
+# DI
+dishka
+
+# Database (cluster workflows)
+sqlalchemy==2.0.48
+psycopg2-binary
+python-ulid==3.1.0
