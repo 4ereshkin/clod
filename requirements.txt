@@ -1,5 +1,5 @@
 # Point Cloud processing
-pdal==3.4.5
+pdal==2.4.2
 open3d==0.19.0
 laspy==2.7.0
 numpy==2.4.2
