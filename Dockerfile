@@ -11,6 +11,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
         cmake \
+        libpdal-dev \
         libgl1 \
         libgomp1 \
         libglib2.0-0 \
