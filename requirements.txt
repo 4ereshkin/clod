@@ -14,6 +14,7 @@ signalrcore
 redis
 
 # Cloud Storage
+boto3==1.42.59
 # botocore version is resolved by aiobotocore — do not pin separately
 aiobotocore==3.2.1
 
