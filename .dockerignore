@@ -23,6 +23,7 @@ logs/
 *.pdf
 point_cloud/db.json
 temporal.exe
+user_data/
 /data/user_data/
 /temporal_cli_1.5.1_windows_amd64/
 /exp/
