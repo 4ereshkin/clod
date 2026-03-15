@@ -1,8 +1,15 @@
 .git
 .idea/
 .vscode/
+.claude/
 __pycache__/
+**/__pycache__
+*.pyc
+*.pyo
 .env
+env/
+venv/
+.venv/
 data/
 logs/
 *.log
@@ -19,4 +26,3 @@ temporal.exe
 /data/user_data/
 /temporal_cli_1.5.1_windows_amd64/
 /exp/
-env
