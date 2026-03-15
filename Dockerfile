@@ -1,4 +1,8 @@
-FROM python:3.11-slim-bookworm
+FROM mambaorg/micromamba:bookworm-slim
+
+ARG MAMBA_DOCKERFILE_ACTIVATE=1
+
+USER root
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -6,23 +10,26 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# pdal Python bindings (2.4.x) must be compiled against system libpdal.
-# build-essential + cmake + libpdal-dev are kept in the image (runtime stage).
-# open3d needs libgl1/libgomp1/libglib2.0-0 at runtime.
-COPY requirements.txt ./
+# Runtime libs: libpq for sqlalchemy postgres, gdal for geo, open3d system deps
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        build-essential \
-        cmake \
-        libpdal-dev \
-        pdal \
+        libpq5 \
         libgl1 \
         libgomp1 \
         libglib2.0-0 \
         ca-certificates \
-    && pip install --upgrade pip \
-    && pip install -r requirements.txt \
     && rm -rf /var/lib/apt/lists/*
+
+# PDAL C++ library + Python bindings via conda-forge (no system libpdal-dev needed)
+RUN micromamba install -n base -c conda-forge -y \
+        python=3.11 \
+        pdal \
+        python-pdal \
+    && micromamba clean --all --yes
+
+COPY requirements.txt ./
+# pdal is managed by conda-forge above, skip it in pip
+RUN grep -v "^pdal" requirements.txt | pip install --no-cache-dir -r /dev/stdin
 
 COPY . .
 
