@@ -1,0 +1,15 @@
+# Temporal workflow
+temporalio==1.23.0
+
+# Messaging & Events
+aio-pika==9.6.1
+signalrcore
+redis
+
+# Data validation & Config
+pydantic==2.12.5
+pydantic-settings
+python-dotenv
+
+# DI
+dishka
