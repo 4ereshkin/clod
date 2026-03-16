@@ -17,7 +17,6 @@ from infrastructure.common.signalr import SignalREventPublisher
 from infrastructure.common.keydb import KeyDbStatusStore
 from infrastructure.common.rabbit import RabbitEventPublisher
 from infrastructure.common.temporal import TemporalAdapter
-from infrastructure.s3 import S3Client
 
 
 class InfrastructureProvider(Provider):
@@ -55,11 +54,6 @@ class InfrastructureProvider(Provider):
         client = await Client.connect(config.temporal.dsn)
         print('connected to temporal')
         return client
-
-    # Добавлен провайдер для S3Client
-    @provide(scope=Scope.APP)
-    def get_s3_client(self, config: AppSettings) -> S3Client:
-        return S3Client(config.s3)
 
     # --- INGEST ---
 

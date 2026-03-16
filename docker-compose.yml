@@ -143,6 +143,10 @@ services:
     container_name: point-cloud-listener
     restart: unless-stopped
     env_file: .env
+    environment:
+      - TEMPORAL_DSN=temporal:7233
+      - KEYDB_DSN=redis://:password@keydb:6379
+      - RABBIT_DSN=amqp://guest:guest@rabbitmq:5672/
     depends_on:
       - temporal
       - keydb
@@ -154,6 +158,11 @@ services:
     container_name: worker-ingest
     restart: unless-stopped
     env_file: .env
+    environment:
+      - TEMPORAL_DSN=temporal:7233
+      - KEYDB_DSN=redis://:password@keydb:6379
+      - RABBIT_DSN=amqp://guest:guest@rabbitmq:5672/
+      - S3_ENDPOINT=http://seaweed-s3:8333
     depends_on:
       - temporal
       - keydb
@@ -166,6 +175,11 @@ services:
     container_name: worker-registration
     restart: unless-stopped
     env_file: .env
+    environment:
+      - TEMPORAL_DSN=temporal:7233
+      - KEYDB_DSN=redis://:password@keydb:6379
+      - RABBIT_DSN=amqp://guest:guest@rabbitmq:5672/
+      - S3_ENDPOINT=http://seaweed-s3:8333
     depends_on:
       - temporal
       - keydb
