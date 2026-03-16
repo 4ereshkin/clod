@@ -10,6 +10,7 @@ from temporalio.client import Client
 from dishka import make_async_container
 
 from infrastructure.providers import InfrastructureProvider, ApplicationProvider
+from infrastructure.worker_providers import WorkerProvider
 # Импортируем наш новый класс активностей!
 from point_cloud.activities.registration_activities_v1 import RegistrationActivitiesV1
 # Импортируем наш новый воркфлоу!
@@ -23,7 +24,8 @@ async def main():
 
     container = make_async_container(
         InfrastructureProvider(),
-        ApplicationProvider()
+        ApplicationProvider(),
+        WorkerProvider(),
     )
 
     try:

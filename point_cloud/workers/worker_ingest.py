@@ -16,6 +16,7 @@ from dishka import make_async_container
 
 # Импортируем DI-провайдеры
 from infrastructure.providers import InfrastructureProvider, ApplicationProvider
+from infrastructure.worker_providers import WorkerProvider
 from point_cloud.activities.ingest_activities_v1 import IngestActivitiesV1
 # Импортируем сам Workflow
 from point_cloud.workflows.ingest import IngestWorkflow
@@ -28,7 +29,8 @@ async def main():
     # 1. Создаем DI-контейнер для воркера (такой же, как в main.py!)
     container = make_async_container(
         InfrastructureProvider(),
-        ApplicationProvider()
+        ApplicationProvider(),
+        WorkerProvider(),
     )
 
     try:

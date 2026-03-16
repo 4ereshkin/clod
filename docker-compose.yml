@@ -137,7 +137,9 @@ services:
     command: keydb-server --requirepass password --appendonly yes
 
   point-cloud-listener:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.listener
     container_name: point-cloud-listener
     restart: unless-stopped
     env_file: .env
