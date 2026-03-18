@@ -20,9 +20,9 @@ RUN mamba install -y -c conda-forge \
         python-pdal \
     && mamba clean -afy
 
-COPY requirements-worker.txt ./
+COPY requirements.txt ./
 # pdal is already installed via conda — skip it here
-RUN grep -v '^pdal\|^#\|^$' requirements-worker.txt > /tmp/reqs.txt \
+RUN grep -v '^pdal\|^#\|^$' requirements.txt > /tmp/reqs.txt \
     && pip install --no-cache-dir -r /tmp/reqs.txt
 
 COPY . .
