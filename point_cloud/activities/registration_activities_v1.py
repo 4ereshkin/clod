@@ -1,4 +1,5 @@
 import concurrent.futures
+import logging
 import os
 import json
 from pathlib import Path
@@ -14,6 +15,8 @@ from application.common.config import get_settings
 from application.common.contracts import FailedEvent, ScenarioResult, StatusEvent
 from application.common.interfaces import EventPublisher, StatusStore
 from infrastructure.s3 import S3Client
+
+logger = logging.getLogger(__name__)
 
 
 class RegistrationActivitiesV1:
@@ -31,6 +34,7 @@ class RegistrationActivitiesV1:
     @activity.defn
     async def download_scan(self, key: str, dst_dir: str, filename: str) -> str:
         """Асинхронно скачивает объект из S3 по ключу."""
+        logger.info("Downloading scan", extra={"key": key})
         activity.heartbeat({"stage": "downloading", "key": key})
         dst_path = Path(dst_dir)
         dst_path.mkdir(parents=True, exist_ok=True)
@@ -75,6 +79,7 @@ class RegistrationActivitiesV1:
     @activity.defn
     def prepare_scan_for_registration(self, cloud_s3_key: str, trajectory_s3_key: str | None, voxel_size: float,
                                       dst_dir: str) -> dict[str, Any]:
+        logger.info("Preparing scan for registration", extra={"cloud_s3_key": cloud_s3_key, "voxel_size": voxel_size})
         activity.heartbeat({'stage': 'streaming_copc_and_anchors'})
 
         os.environ['AWS_ACCESS_KEY_ID'] = self.settings.access_key
@@ -145,6 +150,7 @@ class RegistrationActivitiesV1:
     @activity.defn
     def register_pair(self, source_path: str, target_path: str, edge: dict[str, Any], params: dict[str, Any]) -> dict[
         str, Any]:
+        logger.info("Registering pair", extra={"from": edge.get("from"), "to": edge.get("to")})
         activity.heartbeat({"stage": "icp", "edge": f"{edge['from']} -> {edge['to']}"})
 
         src_pcd = o3d.io.read_point_cloud(source_path)
@@ -230,6 +236,7 @@ class RegistrationActivitiesV1:
 
     @activity.defn
     def solve_pose_graph(self, graph: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+        logger.info("Solving pose graph", extra={"scans": len(graph.get("scan_ids", []))})
         activity.heartbeat({"stage": "solve_pose_graph"})
 
         scan_ids: list[str] = graph.get("scan_ids", [])

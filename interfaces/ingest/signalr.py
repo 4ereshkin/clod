@@ -5,6 +5,7 @@ from typing import Any
 from signalrcore.hub_connection_builder import BaseHubConnection
 
 from application.common.use_case import StartUseCase
+from infrastructure.logging import correlation_id_var
 from interfaces.ingest.dto import IngestStartMessageDTO
 from interfaces.ingest.mappers import to_start_command
 
@@ -33,6 +34,7 @@ class IngestSignalRController:
 
         try:
             dto = IngestStartMessageDTO.model_validate(payload)
+            correlation_id_var.set(dto.workflow_id)
 
             command = to_start_command(dto)
 

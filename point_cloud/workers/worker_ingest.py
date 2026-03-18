@@ -17,11 +17,12 @@ from dishka import make_async_container
 # Импортируем DI-провайдеры
 from infrastructure.providers import InfrastructureProvider, ApplicationProvider
 from infrastructure.worker_providers import WorkerProvider
+from infrastructure.logging import setup_logging, LoggingInterceptor
 from point_cloud.activities.ingest_activities_v1 import IngestActivitiesV1
 # Импортируем сам Workflow
 from point_cloud.workflows.ingest import IngestWorkflow
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -52,7 +53,6 @@ async def main():
                            IngestDownloadWorkflow,
                            IngestProfilingWorkflow,
                            IngestReprojectWorkflow,],
-                # Внимание: передаем методы экземпляра класса Activities!
                 activities=[
                     activities.point_cloud_meta,
                     activities.download_s3_object,
@@ -65,6 +65,7 @@ async def main():
                     activities.publish_failed_activity,
                 ],
                 activity_executor=activity_executor,
+                interceptors=[LoggingInterceptor()],
             )
 
             logger.info(f"Ingest Temporal Worker started on queue '{task_queue}'...")

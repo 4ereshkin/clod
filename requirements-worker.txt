@@ -29,3 +29,6 @@ dishka
 sqlalchemy==2.0.48
 psycopg2-binary
 python-ulid==3.1.0
+
+# Logging
+python-json-logger>=3.0

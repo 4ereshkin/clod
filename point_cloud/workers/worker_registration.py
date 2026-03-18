@@ -11,12 +11,11 @@ from dishka import make_async_container
 
 from infrastructure.providers import InfrastructureProvider, ApplicationProvider
 from infrastructure.worker_providers import WorkerProvider
-# Импортируем наш новый класс активностей!
+from infrastructure.logging import setup_logging, LoggingInterceptor
 from point_cloud.activities.registration_activities_v1 import RegistrationActivitiesV1
-# Импортируем наш новый воркфлоу!
 from point_cloud.workflows.registration import RegistrationWorkflow
 
-logging.basicConfig(level=logging.INFO)
+setup_logging()
 logger = logging.getLogger(__name__)
 
 
@@ -39,7 +38,7 @@ async def main():
             worker = Worker(
                 temporal_client,
                 task_queue=task_queue,
-                workflows=[RegistrationWorkflow],  # Наш Воркфлоу
+                workflows=[RegistrationWorkflow],
                 activities=[
                     activities.prepare_scan_for_registration,
                     activities.propose_edges,
@@ -52,6 +51,7 @@ async def main():
                     activities.publish_completed_activity
                 ],
                 activity_executor=activity_executor,
+                interceptors=[LoggingInterceptor()],
             )
 
             logger.info(f"Registration Temporal Worker started on queue '{task_queue}'...")

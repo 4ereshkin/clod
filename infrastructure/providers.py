@@ -1,6 +1,9 @@
+import logging
 from typing import Any, AsyncGenerator
 
 from application.common.config import AppSettings
+
+logger = logging.getLogger(__name__)
 
 import aio_pika
 from aio_pika.abc import AbstractRobustConnection, AbstractChannel
@@ -26,18 +29,18 @@ class InfrastructureProvider(Provider):
 
     @provide(scope=Scope.APP)
     async def get_redis_client(self, config: AppSettings) -> AsyncGenerator[Redis, Any]:
-        print('connecting to keydb')
+        logger.info("Connecting to KeyDB")
         client = from_url(config.keydb.dsn, encoding="utf-8", decode_responses=True)
         await client.ping()
-        print('connected to keydb')
+        logger.info("Connected to KeyDB")
         yield client
         await client.aclose()
 
     @provide(scope=Scope.APP)
     async def get_rabbit_connection(self, config: AppSettings) -> AsyncGenerator[AbstractRobustConnection, Any]:
-        print('connecting to rabbit')
+        logger.info("Connecting to RabbitMQ")
         connection = await aio_pika.connect_robust(config.rabbitmq.dsn)
-        print('connected to rabbit')
+        logger.info("Connected to RabbitMQ")
         yield connection
         await connection.close()
 
@@ -50,9 +53,9 @@ class InfrastructureProvider(Provider):
 
     @provide(scope=Scope.APP)
     async def get_temporal_client(self, config: AppSettings) -> Client:
-        print('connecting to temporal')
+        logger.info("Connecting to Temporal")
         client = await Client.connect(config.temporal.dsn)
-        print('connected to temporal')
+        logger.info("Connected to Temporal")
         return client
 
     # --- INGEST ---

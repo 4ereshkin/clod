@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -10,6 +11,8 @@ from temporalio.exceptions import ApplicationError
 from application.common.contracts import StatusEvent, ScenarioResult, FailedEvent
 from infrastructure.s3 import S3Client
 from application.common.interfaces import EventPublisher, StatusStore
+
+logger = logging.getLogger(__name__)
 
 
 class IngestActivitiesV1:
@@ -26,6 +29,7 @@ class IngestActivitiesV1:
 
     @activity.defn
     def point_cloud_meta(self, cloud_path: str, hexbin_path: str) -> dict:
+        logger.info("Extracting metadata and hexbin", extra={"cloud_path": cloud_path})
         activity.heartbeat({"stage": "extracting_metadata_and_hexbin"})
 
         # Пайплайн PDAL: читаем файл и сразу строим hexbin (полигоны плотности)
@@ -75,6 +79,7 @@ class IngestActivitiesV1:
             "crs": reader_meta.get("srs", {}).get("json", {})
         }
 
+        logger.info("Metadata extracted", extra={"point_count": result_meta.get("point_count", 0)})
         return result_meta
 
     @activity.defn
@@ -83,6 +88,7 @@ class IngestActivitiesV1:
         Асинхронно скачивает объект из S3 по ключу.
         Возвращает локальный путь к скачанному файлу.
         """
+        logger.info("Downloading S3 object", extra={"key": key})
         activity.heartbeat({"stage": "downloading", "key": key})
 
         filename = Path(key).name
@@ -92,6 +98,7 @@ class IngestActivitiesV1:
 
         await self.s3_client.download_object(key=key, dest_path=str(local_file_path))
 
+        logger.info("Downloaded S3 object", extra={"key": key, "local_path": str(local_file_path)})
         return str(local_file_path)
 
     @activity.defn
@@ -136,6 +143,7 @@ class IngestActivitiesV1:
 
     @activity.defn
     def reproject_to_copc(self, file_path: str, in_srs: str, out_srs: str) -> Optional[str]:
+        logger.info("Reprojecting to COPC", extra={"in_srs": in_srs, "out_srs": out_srs})
         activity.heartbeat({'stage': 'reproject_to_copc'})
         local_in = Path(file_path)
         local_out = local_in.with_name(f'{local_in.stem}_copc.laz')
@@ -159,8 +167,8 @@ class IngestActivitiesV1:
 
     @activity.defn
     async def publish_status_activity(self, status_data: dict) -> None:
-        # Конвертируем сырой словарь из Temporal обратно в Pydantic модель
         event = StatusEvent.model_validate(status_data)
+        logger.info("Publishing status", extra={"workflow_id": event.workflow_id, "status": event.status.value})
 
         # Сохраняем в KeyDB
         await self.status_store.set_status(

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import pdal
 import laspy
 import numpy as np
@@ -21,6 +22,8 @@ from application.common.config import get_settings
 from lidar_app.app.repo import Repo
 from lidar_app.app.s3_store import S3Store
 from lidar_app.app.artifact_service import download_artifact
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -98,6 +101,7 @@ async def download_dataset_version_artifact(
             "size_bytes": art.size_bytes,
         }
 
+    logger.info("Downloading dataset artifact", extra={"dataset_version_id": dataset_version_id, "kind": kind})
     activity.heartbeat(
         {
             "stage": "download_dataset_version_artifact",
@@ -310,6 +314,7 @@ async def split_into_tiles(
 
         return {"tiles": tiles}
 
+    logger.info("Splitting into tiles", extra={"input_file": input_file, "tile_size": tile_size})
     activity.heartbeat(
         {"stage": "split_into_tiles", "input_file": input_file}
     )
@@ -464,6 +469,7 @@ async def cluster_tile(
         new_las.write(str(output_path))
         return {"classified_file": str(output_path)}
 
+    logger.info("Clustering tile", extra={"input_file": input_file})
     activity.heartbeat({"stage": "cluster_tile", "input_file": input_file})
     return await asyncio.to_thread(_run)
 
@@ -563,5 +569,6 @@ async def merge_tiles(
 
         return {"merged_file": output_file}
 
+    logger.info("Merging tiles", extra={"tile_count": len(tiles), "output_file": output_file})
     activity.heartbeat({"stage": "merge_tiles", "tiles": len(tiles)})
     return await asyncio.to_thread(_run)

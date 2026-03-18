@@ -5,6 +5,7 @@ from typing import Any
 from signalrcore.hub_connection_builder import BaseHubConnection
 
 from application.common.use_case import StartUseCase
+from infrastructure.logging import correlation_id_var
 from interfaces.registration.dto import RegistrationStartMessageDTO
 from interfaces.registration.mappers import to_registration_start_command
 
@@ -30,6 +31,7 @@ class RegistrationSignalRController:
 
         try:
             dto = RegistrationStartMessageDTO.model_validate(payload)
+            correlation_id_var.set(dto.workflow_id)
             command = to_registration_start_command(dto)
 
             future = asyncio.run_coroutine_threadsafe(
