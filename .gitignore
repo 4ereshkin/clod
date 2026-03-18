@@ -24,3 +24,9 @@ logs/
 /exp/
 /archi/
 /port/connectors/input_data/
+
+# Claude Code local files
+.claude/
+
+# Local test scripts
+test_clouds_pretrained.py
