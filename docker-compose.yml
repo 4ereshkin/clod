@@ -137,9 +137,7 @@ services:
     command: keydb-server --requirepass password --appendonly yes
 
   point-cloud-listener:
-    build:
-      context: .
-      dockerfile: Dockerfile.listener
+    image: code.pepega.club/4ereshkin/clod:v1.0
     container_name: point-cloud-listener
     restart: unless-stopped
     env_file: .env
@@ -154,7 +152,7 @@ services:
     command: python main.py
 
   worker-ingest:
-    build: .
+    image: code.pepega.club/4ereshkin/clod:v1.0
     container_name: worker-ingest
     restart: unless-stopped
     env_file: .env
@@ -171,7 +169,7 @@ services:
     command: python point_cloud/workers/worker_ingest.py
 
   worker-registration:
-    build: .
+    image: code.pepega.club/4ereshkin/clod:v1.0
     container_name: worker-registration
     restart: unless-stopped
     env_file: .env
